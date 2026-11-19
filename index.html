@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Simulateur ETF Belgique</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #181c27;
+    --surface2: #1e2333;
+    --border: #2a2f45;
+    --accent: #4f8ef7;
+    --accent2: #34d399;
+    --accent3: #f59e0b;
+    --accent4: #f43f5e;
+    --text: #e8ecf4;
+    --muted: #8892a4;
+    --radius: 10px;
+    --shadow: 0 2px 16px rgba(0,0,0,.45);
+    font-size: 15px;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f0f2f7;
+      --surface: #ffffff;
+      --surface2: #f7f8fc;
+      --border: #d4d9e8;
+      --text: #1a1f2e;
+      --muted: #5a6278;
+      --shadow: 0 2px 16px rgba(0,0,0,.10);
+    }
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    line-height: 1.55;
+    padding: env(safe-area-inset-top,0) env(safe-area-inset-right,0) env(safe-area-inset-bottom,0) env(safe-area-inset-left,0);
+  }
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 18px 24px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    flex-wrap: wrap;
+  }
+  header h1 { font-size: 1.15rem; font-weight: 700; letter-spacing: -.01em; }
+  header .badge { background: var(--accent); color: #fff; border-radius: 4px; font-size: .72rem; padding: 2px 8px; font-weight: 600; }
+  .container { max-width: 1280px; margin: 0 auto; padding: 20px 16px 48px; }
+  .grid { display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); }
+  .panel-title { font-size: .78rem; font-weight: 700; letter-spacing: .07em; color: var(--muted); text-transform: uppercase; margin-bottom: 16px; }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: .82rem; color: var(--muted); margin-bottom: 5px; font-weight: 500; }
+  .field input[type=number], .field select, .field input[type=range] {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); border-radius: 6px; padding: 7px 10px; font-size: .9rem;
+    transition: border-color .15s;
+  }
+  .field input[type=number]:focus, .field select:focus { outline: none; border-color: var(--accent); }
+  .field input[type=range] { padding: 4px 0; border: none; background: transparent; accent-color: var(--accent); }
+  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .notice { background: color-mix(in srgb, var(--accent3) 12%, transparent); border: 1px solid color-mix(in srgb, var(--accent3) 30%, transparent); border-radius: 6px; padding: 9px 12px; font-size: .78rem; color: var(--accent3); margin-top: 4px; line-height: 1.4; }
+  .notice.info { background: color-mix(in srgb, var(--accent) 10%, transparent); border-color: color-mix(in srgb, var(--accent) 25%, transparent); color: var(--accent); }
+  .notice.danger { background: color-mix(in srgb, var(--accent4) 10%, transparent); border-color: color-mix(in srgb, var(--accent4) 25%, transparent); color: var(--accent4); }
+
+  /* Results KPI strip */
+  .kpi-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+  .kpi .label { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; }
+  .kpi .val { font-size: 1.35rem; font-weight: 700; color: var(--text); }
+  .kpi .sub { font-size: .75rem; color: var(--muted); margin-top: 2px; }
+  .kpi.accent .val { color: var(--accent); }
+  .kpi.green .val { color: var(--accent2); }
+  .kpi.amber .val { color: var(--accent3); }
+  .kpi.red .val { color: var(--accent4); }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 16px; }
+  .tab { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 6px 14px; font-size: .82rem; cursor: pointer; color: var(--muted); font-weight: 500; transition: all .15s; }
+  .tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  /* Charts */
+  .chart-wrap { position: relative; height: 310px; }
+  canvas { max-height: 310px; }
+
+  /* Table */
+  .results-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+  .results-table th { text-align: left; color: var(--muted); font-weight: 600; padding: 8px 10px; border-bottom: 1px solid var(--border); font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; }
+  .results-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .results-table td:last-child { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .results-table tr.sep td { border-top: 2px solid var(--accent); padding-top: 12px; color: var(--accent); font-weight: 700; }
+  .results-table tr.total td { font-weight: 700; font-size: .9rem; }
+  .results-table td small { display: block; color: var(--muted); font-weight: 400; font-size: .75rem; margin-top: 2px; }
+
+  /* Disclaimer */
+  .disclaimer { font-size: .73rem; color: var(--muted); line-height: 1.5; margin-top: 20px; padding: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; }
+  .disclaimer strong { color: var(--text); }
+
+  /* Buttons */
+  .btn { display: inline-flex; align-items: center; gap: 6px; background: var(--accent); color: #fff; border: none; border-radius: 6px; padding: 7px 16px; font-size: .82rem; font-weight: 600; cursor: pointer; transition: opacity .15s; }
+  .btn:hover { opacity: .85; }
+  .btn.secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+
+  .section-gap { margin-top: 20px; }
+  .flex-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+  hr.sep { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+  /* Scenario table */
+  .scenario-row { display: grid; grid-template-columns: auto 1fr 1fr 1fr; gap: 0; border-bottom: 1px solid var(--border); }
+  .scenario-row:last-child { border-bottom: none; }
+  .scenario-cell { padding: 10px 12px; font-size: .82rem; }
+  .scenario-cell.head { font-size: .72rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; background: var(--surface2); border-bottom: 1px solid var(--border); }
+  .scenario-cell:first-child { width: 110px; }
+
+  .etf-badge { display: inline-block; background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent); font-size: .7rem; padding: 2px 7px; border-radius: 3px; font-weight: 600; margin-left: 6px; }
+  .broker-note { font-size: .75rem; color: var(--muted); margin-top: 4px; line-height: 1.4; }
+
+  .spinner { display: none; }
+
+  /* Mobile */
+  @media (max-width: 540px) {
+    header h1 { font-size: 1rem; }
+    .kpi .val { font-size: 1.1rem; }
+    .chart-wrap { height: 240px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Simulateur d'investissement ETF — Belgique</h1>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+    <span class="badge">Fiscalité belge 2026</span>
+    <button class="btn secondary" onclick="resetAll()">↺ Remise à zéro</button>
+  </div>
+</header>
+
+<div class="container">
+  <div class="grid">
+    <!-- Left: Parameters -->
+    <div>
+      <!-- ETF Selection -->
+      <div class="panel">
+        <div class="panel-title">Sélection ETF</div>
+        <div class="field">
+          <label>ETF MSCI World capitalisant</label>
+          <select id="etfSelect" onchange="onETFChange()">
+            <option value="IWDA">iShares Core MSCI World — IWDA — IE00B4L5Y983</option>
+            <option value="XDWD">Xtrackers MSCI World 1C — XDWD — IE00BJ0KDQ92</option>
+            <option value="SWRD">SPDR MSCI World — SWRD — IE00BFY0GT14</option>
+            <option value="LCUW">Amundi Core MSCI World — LCUW — LU1781541179</option>
+            <option value="UBS">UBS Core MSCI World — IE00BD4TXV59</option>
+          </select>
+        </div>
+        <div id="etfInfo" style="font-size:.8rem;line-height:1.6;color:var(--muted);"></div>
+        <div class="notice info" style="margin-top:10px;">
+          Tous ces ETF sont domiciliés en Irlande/Luxembourg et <strong>non enregistrés en Belgique</strong> → TOB 0,12 % (plafond 1 300 €/ordre). Modifiable ci-dessous.
+        </div>
+        <hr class="sep">
+        <div class="row-2">
+          <div class="field">
+            <label>TER annuel (%)</label>
+            <input type="number" id="ter" step="0.01" min="0" max="2" value="0.20" oninput="compute()">
+          </div>
+          <div class="field">
+            <label>TOB achat (%)</label>
+            <input type="number" id="tobBuy" step="0.01" min="0" max="2" value="0.12" oninput="compute()">
+          </div>
+        </div>
+        <div class="field">
+          <label>TOB vente (%)</label>
+          <input type="number" id="tobSell" step="0.01" min="0" max="2" value="0.12" oninput="compute()">
+        </div>
+      </div>
+
+      <!-- Broker -->
+      <div class="panel section-gap">
+        <div class="panel-title">Courtier</div>
+        <div class="field">
+          <label>Sélectionner le courtier</label>
+          <select id="brokerSelect" onchange="onBrokerChange()">
+            <option value="bolero">Bolero (KBC) — Playlist ETF</option>
+            <option value="degiro">DEGIRO — sélection de base</option>
+            <option value="degiro_other">DEGIRO — hors sélection</option>
+            <option value="saxo">Saxo Bank Belgique</option>
+            <option value="trade_republic">Trade Republic</option>
+            <option value="medirect">MeDirect (0 € ETF)</option>
+            <option value="keytrade">Keytrade Bank</option>
+            <option value="custom">Autre / tarif personnalisé</option>
+          </select>
+        </div>
+        <div id="brokerNote" class="broker-note"></div>
+        <hr class="sep">
+        <div class="field">
+          <label>Frais de courtage par ordre (€)</label>
+          <input type="number" id="brokerage" step="0.01" min="0" value="5.00" oninput="compute()">
+        </div>
+        <div class="notice" id="brokerTOBnote">
+          ⚠️ <strong>Trade Republic</strong> : vous devez déclarer et payer la TOB vous-même via MyMinFin (avant la fin du 2e mois suivant la transaction). Ce simulateur calcule la TOB mais ne gère pas la déclaration.
+        </div>
+        <div class="field" style="margin-top:12px;">
+          <label>Spread estimé à l'achat (%)</label>
+          <input type="number" id="spreadBuy" step="0.01" min="0" value="0.05" oninput="compute()">
+        </div>
+        <div class="field">
+          <label>Spread estimé à la vente (%)</label>
+          <input type="number" id="spreadSell" step="0.01" min="0" value="0.05" oninput="compute()">
+        </div>
+      </div>
+
+      <!-- Investment params -->
+      <div class="panel section-gap">
+        <div class="panel-title">Paramètres d'investissement</div>
+        <div class="field">
+          <label>Capital initial (€)</label>
+          <input type="number" id="initialCapital" step="100" min="0" value="0" oninput="compute()">
+        </div>
+        <div class="field">
+          <label>Versement mensuel (€)</label>
+          <input type="number" id="monthlyDeposit" step="50" min="0" value="0" oninput="compute()">
+        </div>
+        <div class="field">
+          <label>Durée d'investissement : <strong id="durationLabel">34 ans</strong></label>
+          <input type="range" id="duration" min="1" max="50" value="34" oninput="onDurationSlide(this.value)">
+        </div>
+        <div class="field">
+          <label>Rendement annuel brut (avant TER) : <strong id="returnLabel">6,00 %</strong></label>
+          <input type="range" id="annualReturn" min="0" max="20" step="0.5" value="6" oninput="onReturnSlide(this.value)">
+        </div>
+        <div class="field">
+          <label>Inflation annuelle : <strong id="inflationLabel">2,00 %</strong></label>
+          <input type="range" id="inflation" min="0" max="10" step="0.25" value="2" oninput="onInflationSlide(this.value)">
+        </div>
+        <div class="field">
+          <label>Fréquence des achats</label>
+          <select id="buyFreq" onchange="compute()">
+            <option value="1">Mensuelle (chaque mois)</option>
+            <option value="2">Tous les 2 mois</option>
+            <option value="3">Trimestrielle</option>
+            <option value="6">Semestrielle</option>
+            <option value="12">Annuelle</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Tax params -->
+      <div class="panel section-gap">
+        <div class="panel-title">Fiscalité belge</div>
+        <div class="field">
+          <label>Taux taxe plus-values (%)</label>
+          <input type="number" id="cgTax" step="1" min="0" max="50" value="10" oninput="compute()">
+        </div>
+        <div class="field">
+          <label>Abattement annuel taxe PV (€)</label>
+          <input type="number" id="cgExemption" step="1000" min="0" value="10000" oninput="compute()">
+        </div>
+        <div class="notice">
+          ⚠️ La taxe belge sur les plus-values (10 %, franchise annuelle 10 000 €, jusqu'à 15 000 € avec report) s'applique aux gains réalisés depuis le 1er janvier 2026. Dans ce simulateur, l'abattement est appliqué une fois à la sortie (simplification). La fiscalité peut changer sur 34 ans — paramètres modifiables.
+        </div>
+        <div class="notice danger" style="margin-top:8px;">
+          Les plus-values sur les ETF 100 % actions (MSCI World) ne sont <strong>pas</strong> soumises à la taxe Reynders (réservée aux fonds obligataires et mixtes).
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Results -->
+    <div>
+      <!-- KPIs -->
+      <div class="kpi-strip" id="kpiStrip"></div>
+
+      <!-- Charts area -->
+      <div class="panel">
+        <div class="tabs">
+          <button class="tab active" onclick="showChart('portfolio')">Évolution portefeuille</button>
+          <button class="tab" onclick="showChart('breakdown')">Répartition</button>
+          <button class="tab" onclick="showChart('frequency')">Fréquences d'achat</button>
+          <button class="tab" onclick="showChart('scenarios')">Scénarios</button>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="mainChart"></canvas>
+        </div>
+        <div id="chartLegend" style="margin-top:10px;font-size:.75rem;color:var(--muted);"></div>
+      </div>
+
+      <!-- Detail table -->
+      <div class="panel section-gap">
+        <div class="panel-title">Tableau de résultats détaillé</div>
+        <table class="results-table" id="resultsTable"></table>
+      </div>
+
+      <!-- Frequency comparison table -->
+      <div class="panel section-gap">
+        <div class="panel-title">Comparaison des fréquences d'achat</div>
+        <div id="freqTable" style="overflow-x:auto;"></div>
+        <div style="font-size:.73rem;color:var(--muted);margin-top:8px;">
+          Même rendement, même versement mensuel. Les achats moins fréquents réduisent le nombre de frais de courtage mais les liquidités restent en attente sans rendement.
+        </div>
+      </div>
+
+      <!-- Scenario comparison -->
+      <div class="panel section-gap">
+        <div class="panel-title">Comparaison de scénarios (rendement brut)</div>
+        <div id="scenarioTable" style="overflow-x:auto;"></div>
+        <div class="notice" style="margin-top:8px;">Ces rendements sont des hypothèses de simulation, pas des prévisions ni des garanties.</div>
+      </div>
+
+      <div class="disclaimer">
+        <strong>Avertissement.</strong> Ce simulateur est fourni à titre informatif uniquement. Il ne constitue pas un conseil en investissement. Les calculs reposent sur des hypothèses de rendement constant. Les rendements passés ne préjugent pas des rendements futurs. La fiscalité belge peut évoluer. Les données ETF (TER, TOB) sont vérifiées sur sources officielles à la date de création mais peuvent changer. Consultez un conseiller financier agréé avant toute décision.<br><br>
+        <strong>Méthodologie.</strong> Le TER est intégré dans le rendement mensuel net — il n'est pas retranché une 2e fois. La TOB est prélevée sur chaque ordre. Les liquidités en attente entre deux achats ne génèrent aucun rendement. La taxe sur les plus-values (10 %, franchise 10 000 €/an) est appliquée globalement à la sortie (simplification).
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== DATA ====================
+const ETF_DATA = {
+  IWDA: { name:'iShares Core MSCI World', ticker:'IWDA', isin:'IE00B4L5Y983', ter:0.20, tob:0.12, domicile:'Irlande', note:'Non enregistré en Belgique → TOB 0,12 %' },
+  XDWD: { name:'Xtrackers MSCI World 1C', ticker:'XDWD', isin:'IE00BJ0KDQ92', ter:0.12, tob:0.12, domicile:'Irlande', note:'Non enregistré en Belgique → TOB 0,12 %' },
+  SWRD: { name:'SPDR MSCI World', ticker:'SWRD', isin:'IE00BFY0GT14', ter:0.12, tob:0.12, domicile:'Irlande', note:'Non enregistré en Belgique → TOB 0,12 %' },
+  LCUW: { name:'Amundi Core MSCI World', ticker:'LCUW', isin:'LU1781541179', ter:0.12, tob:0.12, domicile:'Luxembourg', note:'Domicilié au Luxembourg, non enregistré en Belgique → TOB 0,12 %. Vérifiez la situation actuelle chez votre courtier.' },
+  UBS:  { name:'UBS Core MSCI World', ticker:'—', isin:'IE00BD4TXV59', ter:0.10, tob:0.12, domicile:'Irlande', note:'Non enregistré en Belgique → TOB 0,12 %. TER parmi les plus bas du marché (0,10 %).' },
+};
+
+const BROKER_DATA = {
+  bolero:       { name:'Bolero (KBC) — Playlist ETF', fee: amt => amt<=250?2.5:amt<=1000?5:amt<=2500?7.5:amt*0.003, feeLabel:'Playlist ETF : 2,50 € (≤250 €) / 5 € (≤1 000 €) / 7,50 € (≤2 500 €) / 0,30 % au-delà', tobAuto:true, note:'TOB prélevée automatiquement. Pas de frais de garde.' },
+  degiro:       { name:'DEGIRO — sélection de base', fee: ()=>1, feeLabel:'1 € par ordre (ETF de la sélection de base sur Tradegate/Euronext)', tobAuto:true, note:'TOB gérée via Flatex. Frais de connectivité : 2,50 €/an/bourse (sauf bourse locale). IWDA est dans la sélection de base.' },
+  degiro_other: { name:'DEGIRO — hors sélection', fee: ()=>3, feeLabel:'3 € par ordre (ETF hors sélection de base)', tobAuto:true, note:'TOB gérée via Flatex. Frais de connectivité : 2,50 €/an/bourse (sauf bourse locale).' },
+  saxo:         { name:'Saxo Bank Belgique', fee: ()=>2, feeLabel:'2 € par ordre ETF (tarif standard 2026)', tobAuto:true, note:'TOB prélevée automatiquement. Pas de frais de garde. Plan AutoInvest disponible.' },
+  trade_republic:{ name:'Trade Republic', fee: ()=>1, feeLabel:'1 € par ordre Manuel. Plans d\'épargne : 0 € (automatiques)', tobAuto:false, note:'⚠️ Trade Republic est un courtier allemand. Vous devez déclarer et payer la TOB vous-même via MyMinFin avant la fin du 2e mois suivant la transaction.' },
+  medirect:     { name:'MeDirect (0 € ETF)', fee: ()=>0, feeLabel:'0 € de frais de courtage sur les ETF (depuis août 2025 — permanent)', tobAuto:true, note:'TOB prélevée automatiquement. Premier courtier belge à supprimer définitivement les frais sur ETF.' },
+  keytrade:     { name:'Keytrade Bank', fee: amt => amt<=250?2.45:amt<=2500?5.95:amt<=5000?14.95:14.95+Math.floor((amt-5000)/10000)*7.5, feeLabel:'2,45 € (≤250 €) / 5,95 € (≤2 500 €) / 14,95 € (≤5 000 €) / +7,50 € par 10 000 € au-delà', tobAuto:true, note:'TOB prélevée automatiquement. Frais compte inactif possibles. Tarifs révisés en janvier 2025.' },
+  custom:       { name:'Tarif personnalisé', fee: ()=>0, feeLabel:'Saisissez le montant ci-dessous', tobAuto:null, note:'Renseignez manuellement le montant par ordre.' },
+};
+
+// ==================== STATE ====================
+let mainChart = null;
+let activeChartTab = 'portfolio';
+
+// ==================== INIT ====================
+window.addEventListener('load', () => {
+  onETFChange();
+  onBrokerChange();
+  compute();
+});
+
+function onETFChange() {
+  const key = document.getElementById('etfSelect').value;
+  const etf = ETF_DATA[key];
+  document.getElementById('ter').value = etf.ter.toFixed(2);
+  document.getElementById('tobBuy').value = etf.tob.toFixed(2);
+  document.getElementById('tobSell').value = etf.tob.toFixed(2);
+  document.getElementById('etfInfo').innerHTML =
+    `<strong>${etf.name}</strong><span class="etf-badge">${etf.ticker}</span><br>ISIN : ${etf.isin} &nbsp;·&nbsp; Domicile : ${etf.domicile}<br>TER : ${etf.ter} % &nbsp;·&nbsp; TOB : ${etf.tob} %<br><span style="color:var(--muted)">${etf.note}</span>`;
+  compute();
+}
+
+function onBrokerChange() {
+  const key = document.getElementById('brokerSelect').value;
+  const b = BROKER_DATA[key];
+  document.getElementById('brokerNote').innerHTML = `<strong>${b.name}</strong><br>${b.feeLabel}<br><span style="color:var(--muted)">${b.note}</span>`;
+  // Set fee sample for 500€ order if not custom
+  if (key !== 'custom') {
+    const monthly = parseFloat(document.getElementById('monthlyDeposit').value) || 500;
+    const freq = parseInt(document.getElementById('buyFreq').value) || 1;
+    const sampleOrder = monthly * freq;
+    const fee = typeof b.fee === 'function' ? b.fee(Math.max(sampleOrder, 100)) : 0;
+    document.getElementById('brokerage').value = fee.toFixed(2);
+  }
+  // Show/hide TOB warning
+  const warn = document.getElementById('brokerTOBnote');
+  warn.style.display = (key === 'trade_republic') ? 'block' : 'none';
+  compute();
+}
+
+function onDurationSlide(v) {
+  document.getElementById('durationLabel').textContent = v + ' ans';
+  compute();
+}
+function onReturnSlide(v) {
+  document.getElementById('returnLabel').textContent = parseFloat(v).toFixed(2) + ' %';
+  compute();
+}
+function onInflationSlide(v) {
+  document.getElementById('inflationLabel').textContent = parseFloat(v).toFixed(2) + ' %';
+  compute();
+}
+
+function resetAll() {
+  document.getElementById('initialCapital').value = 0;
+  document.getElementById('monthlyDeposit').value = 0;
+  document.getElementById('duration').value = 34;
+  document.getElementById('durationLabel').textContent = '34 ans';
+  document.getElementById('annualReturn').value = 6;
+  document.getElementById('returnLabel').textContent = '6,00 %';
+  document.getElementById('inflation').value = 2;
+  document.getElementById('inflationLabel').textContent = '2,00 %';
+  document.getElementById('buyFreq').value = 1;
+  document.getElementById('cgTax').value = 10;
+  document.getElementById('cgExemption').value = 10000;
+  document.getElementById('spreadBuy').value = 0.05;
+  document.getElementById('spreadSell').value = 0.05;
+  document.getElementById('etfSelect').value = 'IWDA';
+  document.getElementById('brokerSelect').value = 'bolero';
+  onETFChange();
+  onBrokerChange();
+  compute();
+}
+
+// ==================== CORE SIMULATION ====================
+/**
+ * Main simulation engine.
+ * Returns detailed year-by-year results.
+ *
+ * Key design decisions:
+ * - Monthly contributions accumulate in cash until next purchase date
+ * - Cash in transit earns NO return (conservative, correct)
+ * - TER is deducted from portfolio value each month as a continuous drag
+ *   Applied monthly = (1 - ter/100)^(1/12) multiplier
+ * - Gross annual return entered by user is BEFORE TER
+ * - Net monthly return = (1 + grossReturn/100)^(1/12) * (1 - ter/100)^(1/12) - 1
+ * - TOB applied to each purchase order (buy)
+ * - Spread applied to each purchase and final sale
+ * - Brokerage fee applied to each purchase order
+ * - Capital gains tax at sale: 10% on (portfolioValue - totalCostBasis) - exemption
+ */
+function simulate(params) {
+  const {
+    initialCapital, monthlyDeposit, durationYears, grossReturnPct, terPct,
+    inflationPct, buyFreqMonths, brokerageFee, tobBuyPct, tobSellPct,
+    spreadBuyPct, spreadSellPct, cgTaxPct, cgExemption
+  } = params;
+
+  // Monthly rate factors
+  const monthlyGrowthFactor = Math.pow(1 + grossReturnPct / 100, 1/12);
+  const monthlyTERFactor = Math.pow(1 - terPct / 100, 1/12);
+  const netMonthlyFactor = monthlyGrowthFactor * monthlyTERFactor; // combined
+
+  const totalMonths = durationYears * 12;
+
+  let portfolioValue = 0; // invested ETF value
+  let cashBuffer = 0;    // accumulated monthly deposits waiting for next purchase
+  let totalInvested = 0; // total money ever put in (contributions)
+  let totalCostBasis = 0; // purchase price basis for capital gains
+
+  let totalBrokerage = 0;
+  let totalTOBBuy = 0;
+  let totalSpreadBuy = 0;
+  let totalTERPaid = 0;
+
+  // Track year-end snapshots
+  const yearlyData = [];
+
+  // Initial capital: invest immediately (no cash buffer for initial capital)
+  if (initialCapital > 0) {
+    const tobCost = initialCapital * tobBuyPct / 100;
+    const spreadCost = initialCapital * spreadBuyPct / 100;
+    const invested = initialCapital - tobCost - spreadCost - brokerageFee;
+    if (invested > 0) {
+      portfolioValue = invested;
+      totalCostBasis += initialCapital; // cost basis = what you paid in total
+      totalBrokerage += brokerageFee;
+      totalTOBBuy += tobCost;
+      totalSpreadBuy += spreadCost;
+    }
+    totalInvested = initialCapital;
+  }
+
+  for (let month = 1; month <= totalMonths; month++) {
+    // Add monthly deposit to cash buffer
+    cashBuffer += monthlyDeposit;
+    totalInvested += monthlyDeposit;
+
+    // Apply monthly growth+TER to invested portfolio
+    const growthThisMonth = portfolioValue * (netMonthlyFactor - 1);
+    // TER drag already embedded in netMonthlyFactor
+    // Track TER separately for reporting: TER monthly drag = portfolio * ((1-ter/100)^(1/12) - 1) magnitude
+    const terMonthDrag = portfolioValue * (1 - monthlyTERFactor);
+    totalTERPaid += terDrag(portfolioValue, terPct);
+    portfolioValue *= netMonthlyFactor;
+
+    // Purchase on schedule (month 1, 1+freq, 1+2*freq, ...)
+    // buyFreqMonths = 1 means every month, 3 = quarterly, etc.
+    const isBuyMonth = (month % buyFreqMonths === 0) || (month === 1 && buyFreqMonths > 1) || (buyFreqMonths === 1);
+    // Cleaner: buy every buyFreqMonths starting from month buyFreqMonths
+    const shouldBuy = (buyFreqMonths === 1) ? true : (month % buyFreqMonths === 0);
+
+    if (shouldBuy && cashBuffer > 0) {
+      const orderGross = cashBuffer;
+      const tobCost = orderGross * tobBuyPct / 100;
+      const spreadCost = orderGross * spreadBuyPct / 100;
+      let fee = brokerageFee;
+      // Clamp: don't pay more in fees than the order itself
+      const totalFees = tobCost + spreadCost + fee;
+      if (totalFees >= orderGross) {
+        // Can't invest — fees exceed order. Keep in cash (effectively lost opportunity)
+        // We still deduct the fees as a cost but nothing is invested
+        totalBrokerage += fee;
+        totalTOBBuy += tobCost;
+        totalSpreadBuy += spreadCost;
+        cashBuffer = 0;
+      } else {
+        const invested = orderGross - tobCost - spreadCost - fee;
+        portfolioValue += invested;
+        totalCostBasis += orderGross; // cost basis = gross amount you deployed
+        totalBrokerage += fee;
+        totalTOBBuy += tobCost;
+        totalSpreadBuy += spreadCost;
+        cashBuffer = 0;
+      }
+    }
+
+    // Year-end snapshot
+    if (month % 12 === 0) {
+      const year = month / 12;
+      const inflFactor = Math.pow(1 + inflationPct / 100, year);
+      yearlyData.push({
+        year,
+        portfolioNominal: portfolioValue + cashBuffer,
+        totalInvested,
+        portfolioReal: (portfolioValue + cashBuffer) / inflFactor,
+        totalInvestedReal: totalInvested / inflFactor,
+        totalBrokerage,
+        totalTOBBuy,
+        totalSpreadBuy,
+        totalTERPaid,
+        totalCostBasis,
+      });
+    }
+  }
+
+  // Final sale calculation
+  const finalGrossValue = portfolioValue + cashBuffer;
+  const finalSpreadCost = finalGrossValue * spreadSellPct / 100;
+  const finalTOBSell = finalGrossValue * tobSellPct / 100;
+  const finalValueAfterExitFees = finalGrossValue - finalSpreadCost - finalTOBSell;
+
+  // Capital gains tax
+  // Gain = finalValueAfterExitFees - totalCostBasis
+  // On taxe (gain - exemption) si positif
+  const rawGain = finalValueAfterExitFees - totalCostBasis;
+  const taxableGain = Math.max(0, rawGain - cgExemption);
+  const cgTaxAmount = taxableGain * cgTaxPct / 100;
+  const finalNetValue = finalValueAfterExitFees - cgTaxAmount;
+
+  const inflFinalFactor = Math.pow(1 + inflationPct / 100, durationYears);
+  const finalNetValueReal = finalNetValue / inflFinalFactor;
+
+  return {
+    yearlyData,
+    finalGrossValue,
+    finalSpreadCost,
+    finalTOBSell,
+    finalValueAfterExitFees,
+    rawGain,
+    taxableGain,
+    cgTaxAmount,
+    finalNetValue,
+    finalNetValueReal,
+    totalInvested,
+    totalBrokerage,
+    totalTOBBuy,
+    totalSpreadBuy,
+    totalTERPaid,
+    totalCostBasis,
+    netGain: finalNetValue - totalInvested,
+  };
+}
+
+function terDrag(portfolio, terPct) {
+  // Monthly TER drag for reporting
+  return portfolio * (1 - Math.pow(1 - terPct/100, 1/12));
+}
+
+function getParams() {
+  return {
+    initialCapital: parseFloat(document.getElementById('initialCapital').value) || 0,
+    monthlyDeposit: parseFloat(document.getElementById('monthlyDeposit').value) || 0,
+    durationYears: parseInt(document.getElementById('duration').value) || 34,
+    grossReturnPct: parseFloat(document.getElementById('annualReturn').value) || 6,
+    terPct: parseFloat(document.getElementById('ter').value) || 0.20,
+    inflationPct: parseFloat(document.getElementById('inflation').value) || 2,
+    buyFreqMonths: parseInt(document.getElementById('buyFreq').value) || 1,
+    brokerageFee: parseFloat(document.getElementById('brokerage').value) || 0,
+    tobBuyPct: parseFloat(document.getElementById('tobBuy').value) || 0.12,
+    tobSellPct: parseFloat(document.getElementById('tobSell').value) || 0.12,
+    spreadBuyPct: parseFloat(document.getElementById('spreadBuy').value) || 0.05,
+    spreadSellPct: parseFloat(document.getElementById('spreadSell').value) || 0.05,
+    cgTaxPct: parseFloat(document.getElementById('cgTax').value) || 10,
+    cgExemption: parseFloat(document.getElementById('cgExemption').value) || 10000,
+  };
+}
+
+function fmt(n, dec=0) {
+  if (!isFinite(n) || isNaN(n)) return '—';
+  return n.toLocaleString('fr-BE', { minimumFractionDigits: dec, maximumFractionDigits: dec }) + ' €';
+}
+function pct(n) { return n.toFixed(2) + ' %'; }
+
+// ==================== MAIN COMPUTE ====================
+function compute() {
+  const p = getParams();
+  const result = simulate(p);
+  renderKPIs(result, p);
+  renderTable(result, p);
+  renderFreqTable(p);
+  renderScenarioTable(p);
+  renderActiveChart(result, p);
+}
+
+function renderKPIs(r, p) {
+  const strip = document.getElementById('kpiStrip');
+  const pctGain = r.totalInvested > 0 ? (r.finalNetValue / r.totalInvested - 1) * 100 : 0;
+  strip.innerHTML = `
+    <div class="kpi accent"><div class="label">Capital versé total</div><div class="val">${fmt(r.totalInvested)}</div><div class="sub">${p.durationYears} ans</div></div>
+    <div class="kpi"><div class="label">Valeur brute finale</div><div class="val">${fmt(r.finalGrossValue)}</div><div class="sub">avant frais de sortie</div></div>
+    <div class="kpi green"><div class="label">Valeur nette finale</div><div class="val">${fmt(r.finalNetValue)}</div><div class="sub">après tous frais et taxes</div></div>
+    <div class="kpi amber"><div class="label">Valeur réelle</div><div class="val">${fmt(r.finalNetValueReal)}</div><div class="sub">pouvoir d'achat, inflation ${pct(p.inflationPct)}</div></div>
+    <div class="kpi"><div class="label">Gain net</div><div class="val">${fmt(r.netGain)}</div><div class="sub">${isFinite(pctGain) ? '+' + pctGain.toFixed(0) + ' %' : '—'}</div></div>
+    <div class="kpi red"><div class="label">Total frais + taxes</div><div class="val">${fmt(r.totalBrokerage + r.totalTOBBuy + r.finalTOBSell + r.totalSpreadBuy + r.finalSpreadCost + r.cgTaxAmount + r.totalTERPaid)}</div><div class="sub">courtage, TOB, TER, spread, PV</div></div>
+  `;
+}
+
+function renderTable(r, p) {
+  const tb = document.getElementById('resultsTable');
+  const rows = [
+    ['Capital initial', null, fmt(p.initialCapital)],
+    ['Versements mensuels × ' + p.durationYears * 12, null, fmt(p.monthlyDeposit * p.durationYears * 12)],
+    ['Capital versé total (initial + versements)', null, fmt(r.totalInvested)],
+    null, // separator
+    ['Valeur brute du portefeuille à terme', 'avant frais de sortie', fmt(r.finalGrossValue)],
+    ['− TOB à la vente (' + pct(p.tobSellPct) + ')', null, '− ' + fmt(r.finalTOBSell)],
+    ['− Spread estimé à la vente (' + pct(p.spreadSellPct) + ')', null, '− ' + fmt(r.finalSpreadCost)],
+    ['Valeur après frais de sortie', null, fmt(r.finalValueAfterExitFees)],
+    null,
+    ['Base imposable (plus-value brute)', null, fmt(r.rawGain)],
+    ['Abattement taxe plus-values', null, '− ' + fmt(Math.min(p.cgExemption, r.rawGain > 0 ? r.rawGain : 0))],
+    ['Plus-value taxable', null, fmt(r.taxableGain)],
+    ['Taxe sur les plus-values (' + pct(p.cgTaxPct) + ')', 'Depuis le 01/01/2026', '− ' + fmt(r.cgTaxAmount)],
+    null,
+    ['🏁 Valeur nette finale (tous frais et taxes)', null, fmt(r.finalNetValue)],
+    ['🏁 Valeur réelle finale (pouvoir d\'achat)', 'inflation ' + pct(p.inflationPct) + '/an', fmt(r.finalNetValueReal)],
+    ['🏁 Gain net après tout', null, fmt(r.netGain)],
+    null,
+    ['Total frais de courtage', 'prélevés par le courtier, à chaque ordre', fmt(r.totalBrokerage)],
+    ['Total TOB à l\'achat (' + pct(p.tobBuyPct) + ')', 'taxe d\'État, prélevée à chaque achat', fmt(r.totalTOBBuy)],
+    ['Total spread achats (' + pct(p.spreadBuyPct) + ')', 'coût de fourchette estimé', fmt(r.totalSpreadBuy)],
+    ['TER — drag de rendement estimé (' + pct(p.terPct) + '/an)', 'inclus dans le rendement net. Informatif uniquement : n\'est PAS retranché une 2e fois de la valeur finale', fmt(r.totalTERPaid)],
+  ];
+
+  tb.innerHTML = `<tr><th>Poste</th><th></th><th>Montant</th></tr>` +
+    rows.map(r => {
+      if (!r) return `<tr class="sep"><td colspan="3"></td></tr>`;
+      return `<tr><td>${r[0]}${r[1] ? `<small>${r[1]}</small>` : ''}</td><td></td><td>${r[2]}</td></tr>`;
+    }).join('');
+}
+
+// ==================== CHART ====================
+function showChart(tab) {
+  activeChartTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  const p = getParams();
+  const result = simulate(p);
+  renderActiveChart(result, p);
+}
+
+function renderActiveChart(result, p) {
+  if (activeChartTab === 'portfolio') renderPortfolioChart(result, p);
+  else if (activeChartTab === 'breakdown') renderBreakdownChart(result, p);
+  else if (activeChartTab === 'frequency') renderFrequencyChart(p);
+  else if (activeChartTab === 'scenarios') renderScenariosChart(p);
+}
+
+function getOrCreateChart(config) {
+  const canvas = document.getElementById('mainChart');
+  if (mainChart) { mainChart.destroy(); mainChart = null; }
+  mainChart = new Chart(canvas, config);
+  return mainChart;
+}
+
+const COLORS = {
+  blue: 'rgba(79,142,247,1)',
+  green: 'rgba(52,211,153,1)',
+  amber: 'rgba(245,158,11,1)',
+  red: 'rgba(244,63,94,1)',
+  purple: 'rgba(167,139,250,1)',
+  blueA: 'rgba(79,142,247,0.15)',
+  greenA: 'rgba(52,211,153,0.15)',
+  amberA: 'rgba(245,158,11,0.15)',
+};
+
+function chartDefaults() {
+  return {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { labels: { color: '#8892a4', font: { size: 11 } } }, tooltip: { callbacks: { label: ctx => ' ' + ctx.dataset.label + ' : ' + (ctx.parsed.y ?? ctx.parsed).toLocaleString('fr-BE', {maximumFractionDigits:0}) + ' €' } } },
+    scales: {
+      x: { ticks: { color: '#8892a4', font:{size:10} }, grid: { color: 'rgba(255,255,255,.05)' } },
+      y: { ticks: { color: '#8892a4', font:{size:10}, callback: v => (v/1000).toFixed(0) + 'k €' }, grid: { color: 'rgba(255,255,255,.05)' } }
+    }
+  };
+}
+
+function renderPortfolioChart(result, p) {
+  const labels = result.yearlyData.map(d => 'An ' + d.year);
+  document.getElementById('chartLegend').textContent = 'Toutes les valeurs sont en euros. Valeur réelle = pouvoir d\'achat corrigé de l\'inflation.';
+  getOrCreateChart({
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Capital versé', data: result.yearlyData.map(d=>d.totalInvested), borderColor: COLORS.amber, backgroundColor: COLORS.amberA, fill: true, tension:.4, pointRadius:0 },
+        { label: 'Portefeuille nominal', data: result.yearlyData.map(d=>d.portfolioNominal), borderColor: COLORS.blue, backgroundColor: COLORS.blueA, fill: true, tension:.4, pointRadius:0 },
+        { label: 'Portefeuille réel (inflation)', data: result.yearlyData.map(d=>d.portfolioReal), borderColor: COLORS.green, backgroundColor:'transparent', borderDash:[5,4], fill:false, tension:.4, pointRadius:0 },
+      ]
+    },
+    options: { ...chartDefaults(), interaction:{mode:'index',intersect:false} }
+  });
+}
+
+function renderBreakdownChart(result, p) {
+  const r = result;
+  const totalCosts = r.totalBrokerage + r.totalTOBBuy + r.finalTOBSell + r.totalSpreadBuy + r.finalSpreadCost + r.cgTaxAmount + r.totalTERPaid;
+  const data = [r.totalInvested, Math.max(0, r.netGain), totalCosts];
+  document.getElementById('chartLegend').textContent = 'Répartition finale de votre investissement.';
+  getOrCreateChart({
+    type: 'doughnut',
+    data: {
+      labels: ['Capital versé', 'Gain net', 'Frais & taxes'],
+      datasets: [{ data, backgroundColor: [COLORS.amber, COLORS.green, COLORS.red], borderWidth:0 }]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins: { legend: { position:'bottom', labels:{color:'#8892a4',font:{size:11},padding:16} }, tooltip:{callbacks:{label: ctx => ' ' + ctx.label + ' : ' + ctx.parsed.toLocaleString('fr-BE',{maximumFractionDigits:0}) + ' €' }} }
+    }
+  });
+}
+
+function renderFrequencyChart(p) {
+  const freqs = [1,2,3,6,12];
+  const labels = ['Mensuelle','Bi-mensuelle','Trimestrielle','Semestrielle','Annuelle'];
+  const nets = freqs.map(f => simulate({...p, buyFreqMonths:f}).finalNetValue);
+  document.getElementById('chartLegend').textContent = 'Valeur nette finale selon la fréquence des achats. Mêmes versements mensuels dans tous les cas.';
+  getOrCreateChart({
+    type:'bar',
+    data:{ labels, datasets:[{label:'Valeur nette finale', data:nets, backgroundColor:[COLORS.blue,COLORS.green,COLORS.amber,COLORS.purple,COLORS.red], borderRadius:6}] },
+    options:{ ...chartDefaults(), plugins:{...chartDefaults().plugins, legend:{display:false}} }
+  });
+}
+
+function renderScenariosChart(p) {
+  const scenarios = [{r:3,label:'Prudent 3 %',color:COLORS.amber},{r:6,label:'Central 6 %',color:COLORS.blue},{r:8,label:'Dynamique 8 %',color:COLORS.green}];
+  const allYears = simulate({...p}).yearlyData.map(d=>'An '+d.year);
+  document.getElementById('chartLegend').textContent = 'Hypothèses de rendement brut annuel. Ces projections ne constituent pas des prévisions.';
+  getOrCreateChart({
+    type:'line',
+    data:{
+      labels:allYears,
+      datasets: scenarios.map(s => {
+        const res = simulate({...p, grossReturnPct:s.r});
+        return { label:s.label, data:res.yearlyData.map(d=>d.portfolioNominal), borderColor:s.color, backgroundColor:'transparent', tension:.4, pointRadius:0 };
+      })
+    },
+    options:{...chartDefaults(), interaction:{mode:'index',intersect:false}}
+  });
+}
+
+// ==================== FREQUENCY TABLE ====================
+function renderFreqTable(p) {
+  const freqs = [
+    {v:1, label:'Mensuelle'},
+    {v:2, label:'Bi-mensuelle'},
+    {v:3, label:'Trimestrielle'},
+    {v:6, label:'Semestrielle'},
+    {v:12, label:'Annuelle'},
+  ];
+  const cols = ['Fréquence','Valeur nette finale','Total courtage','Total TOB achat','Gain net'];
+  let html = `<table class="results-table"><thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>`;
+  freqs.forEach(f => {
+    const r = simulate({...p, buyFreqMonths:f.v});
+    html += `<tr><td>${f.label}</td><td style="text-align:right">${fmt(r.finalNetValue)}</td><td style="text-align:right">${fmt(r.totalBrokerage)}</td><td style="text-align:right">${fmt(r.totalTOBBuy)}</td><td style="text-align:right">${fmt(r.netGain)}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  document.getElementById('freqTable').innerHTML = html;
+}
+
+// ==================== SCENARIO TABLE ====================
+function renderScenarioTable(p) {
+  const scenarios = [
+    {r:3, label:'Prudent — 3 % brut'},
+    {r:6, label:'Central — 6 % brut'},
+    {r:8, label:'Dynamique — 8 % brut'},
+  ];
+  const cols = ['Scénario','Valeur brute finale','Valeur nette finale','Valeur réelle (inflation)','Gain net'];
+  let html = `<table class="results-table"><thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>`;
+  scenarios.forEach(s => {
+    const r = simulate({...p, grossReturnPct:s.r});
+    html += `<tr><td><strong>${s.label}</strong></td><td style="text-align:right">${fmt(r.finalGrossValue)}</td><td style="text-align:right">${fmt(r.finalNetValue)}</td><td style="text-align:right">${fmt(r.finalNetValueReal)}</td><td style="text-align:right">${fmt(r.netGain)}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  document.getElementById('scenarioTable').innerHTML = html;
+}
+</script>
+</body>
+</html>
