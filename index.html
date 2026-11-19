@@ -152,16 +152,16 @@
         <div class="field">
           <label>ETF MSCI World capitalisant</label>
           <select id="etfSelect" onchange="onETFChange()">
-            <option value="IWDA">iShares Core MSCI World — IWDA — IE00B4L5Y983</option>
-            <option value="XDWD">Xtrackers MSCI World 1C — XDWD — IE00BJ0KDQ92</option>
-            <option value="SWRD">SPDR MSCI World — SWRD — IE00BFY0GT14</option>
-            <option value="LCUW">Amundi Core MSCI World — LCUW — LU1781541179</option>
-            <option value="UBS">UBS Core MSCI World — IE00BD4TXV59</option>
+            <option value="VWCE">Vanguard All-World (Acc) — VWCE — IE00BK5BQT80 ⚠️ TOB 1,32%</option>
+            <option value="IWDA">iShares MSCI World (Acc) — IWDA — IE00B4L5Y983</option>
+            <option value="CSPX">iShares Core S&amp;P 500 (Acc) — CSPX — IE00B5BMR087</option>
+            <option value="SSAC">iShares MSCI ACWI (Acc) — SSAC — IE00B6R52259</option>
+            <option value="AEEM">Amundi Emerging Markets (Acc) — AEEM — LU1681045370</option>
           </select>
         </div>
         <div id="etfInfo" style="font-size:.8rem;line-height:1.6;color:var(--muted);"></div>
-        <div class="notice info" style="margin-top:10px;">
-          Tous ces ETF sont domiciliés en Irlande/Luxembourg et <strong>non enregistrés en Belgique</strong> → TOB 0,12 % (plafond 1 300 €/ordre). Modifiable ci-dessous.
+        <div class="notice info" id="etfTobNote" style="margin-top:10px;">
+          Chargement…
         </div>
         <hr class="sep">
         <div class="row-2">
@@ -171,12 +171,12 @@
           </div>
           <div class="field">
             <label>TOB achat (%)</label>
-            <input type="number" id="tobBuy" step="0.01" min="0" max="2" value="0.12" oninput="compute()">
+            <input type="number" id="tobBuy" step="0.01" min="0" max="5" value="0.12" oninput="compute()">
           </div>
         </div>
         <div class="field">
           <label>TOB vente (%)</label>
-          <input type="number" id="tobSell" step="0.01" min="0" max="2" value="0.12" oninput="compute()">
+          <input type="number" id="tobSell" step="0.01" min="0" max="5" value="0.12" oninput="compute()">
         </div>
       </div>
 
@@ -322,16 +322,16 @@
 <script>
 // ==================== DATA ====================
 const ETF_DATA = {
-  IWDA: { name:'iShares Core MSCI World', ticker:'IWDA', isin:'IE00B4L5Y983', ter:0.20, tob:0.12, domicile:'Irlande', note:'Non enregistré en Belgique → TOB 0,12 %' },
-  XDWD: { name:'Xtrackers MSCI World 1C', ticker:'XDWD', isin:'IE00BJ0KDQ92', ter:0.12, tob:0.12, domicile:'Irlande', note:'Non enregistré en Belgique → TOB 0,12 %' },
-  SWRD: { name:'SPDR MSCI World', ticker:'SWRD', isin:'IE00BFY0GT14', ter:0.12, tob:0.12, domicile:'Irlande', note:'Non enregistré en Belgique → TOB 0,12 %' },
-  LCUW: { name:'Amundi Core MSCI World', ticker:'LCUW', isin:'LU1781541179', ter:0.12, tob:0.12, domicile:'Luxembourg', note:'Domicilié au Luxembourg, non enregistré en Belgique → TOB 0,12 %. Vérifiez la situation actuelle chez votre courtier.' },
-  UBS:  { name:'UBS Core MSCI World', ticker:'—', isin:'IE00BD4TXV59', ter:0.10, tob:0.12, domicile:'Irlande', note:'Non enregistré en Belgique → TOB 0,12 %. TER parmi les plus bas du marché (0,10 %).' },
+  VWCE: { name:'Vanguard FTSE All-World UCITS ETF (Acc)', ticker:'VWCE', isin:'IE00BK5BQT80', ter:0.14, tob:1.32, tobSell:1.32, domicile:'Irlande', replication:'Physique (sampling)', index:'FTSE All-World (~3 800 titres, développés + émergents)', warning:true, note:'⚠️ TOB 1,32 % — Compartiment enregistré auprès de la FSMA ET ETF capitalisant → taux 1,32 % (11× plus élevé que 0,12 %). Source : curvo.eu verificateur-tob. TER réduit à 0,14 % en juillet 2026 (était 0,19 %).' },
+  IWDA: { name:'iShares Core MSCI World UCITS ETF (Acc)', ticker:'IWDA', isin:'IE00B4L5Y983', ter:0.20, tob:0.12, tobSell:0.12, domicile:'Irlande', replication:'Physique (sampling)', index:'MSCI World (~1 400 titres, pays développés uniquement)', warning:false, note:'Non enregistré en Belgique → TOB 0,12 %. Inclus dans la sélection de base DEGIRO.' },
+  CSPX: { name:'iShares Core S&P 500 UCITS ETF (Acc)', ticker:'CSPX', isin:'IE00B5BMR087', ter:0.07, tob:0.12, tobSell:0.12, domicile:'Irlande', replication:'Physique complète', index:'S&P 500 (500 plus grandes entreprises US)', warning:false, note:'Non enregistré en Belgique → TOB 0,12 %. TER très bas (0,07 %). Exposition USA uniquement — risque de concentration.' },
+  SSAC: { name:'iShares MSCI ACWI UCITS ETF (Acc)', ticker:'SSAC', isin:'IE00B6R52259', ter:0.20, tob:0.12, tobSell:0.12, domicile:'Irlande', replication:'Physique (sampling)', index:'MSCI ACWI (~1 700 titres, développés + émergents)', warning:false, note:'Non enregistré en Belgique → TOB 0,12 %. Couverture mondiale similaire à VWCE mais sans la TOB de 1,32 %. Indice MSCI (vs FTSE pour VWCE).' },
+  AEEM: { name:'Amundi MSCI Emerging Markets Swap UCITS ETF (Acc)', ticker:'AEEM', isin:'LU1681045370', ter:0.20, tob:0.12, tobSell:0.12, domicile:'Luxembourg', replication:'Synthétique (swap)', index:'MSCI Emerging Markets (~1 400 titres)', warning:false, note:'Domicilié au Luxembourg, non enregistré comme SICAV capitalisant en Belgique → TOB 0,12 %. Réplication synthétique (risque de contrepartie). Marchés émergents uniquement.' },
 };
 
 const BROKER_DATA = {
   bolero:       { name:'Bolero (KBC) — Playlist ETF', fee: amt => amt<=250?2.5:amt<=1000?5:amt<=2500?7.5:amt*0.003, feeLabel:'Playlist ETF : 2,50 € (≤250 €) / 5 € (≤1 000 €) / 7,50 € (≤2 500 €) / 0,30 % au-delà', tobAuto:true, note:'TOB prélevée automatiquement. Pas de frais de garde.' },
-  degiro:       { name:'DEGIRO — sélection de base', fee: ()=>1, feeLabel:'1 € par ordre (ETF de la sélection de base sur Tradegate/Euronext)', tobAuto:true, note:'TOB gérée via Flatex. Frais de connectivité : 2,50 €/an/bourse (sauf bourse locale). IWDA est dans la sélection de base.' },
+  degiro:       { name:'DEGIRO — sélection de base', fee: ()=>1, feeLabel:'1 € par ordre (ETF de la sélection de base sur Tradegate/Euronext)', tobAuto:true, note:'TOB gérée via Flatex. Frais de connectivité : 2,50 €/an/bourse (sauf bourse locale). IWDA et CSPX sont dans la sélection de base.' },
   degiro_other: { name:'DEGIRO — hors sélection', fee: ()=>3, feeLabel:'3 € par ordre (ETF hors sélection de base)', tobAuto:true, note:'TOB gérée via Flatex. Frais de connectivité : 2,50 €/an/bourse (sauf bourse locale).' },
   saxo:         { name:'Saxo Bank Belgique', fee: ()=>2, feeLabel:'2 € par ordre ETF (tarif standard 2026)', tobAuto:true, note:'TOB prélevée automatiquement. Pas de frais de garde. Plan AutoInvest disponible.' },
   trade_republic:{ name:'Trade Republic', fee: ()=>1, feeLabel:'1 € par ordre Manuel. Plans d\'épargne : 0 € (automatiques)', tobAuto:false, note:'⚠️ Trade Republic est un courtier allemand. Vous devez déclarer et payer la TOB vous-même via MyMinFin avant la fin du 2e mois suivant la transaction.' },
@@ -356,9 +356,25 @@ function onETFChange() {
   const etf = ETF_DATA[key];
   document.getElementById('ter').value = etf.ter.toFixed(2);
   document.getElementById('tobBuy').value = etf.tob.toFixed(2);
-  document.getElementById('tobSell').value = etf.tob.toFixed(2);
+  document.getElementById('tobSell').value = (etf.tobSell || etf.tob).toFixed(2);
+  // Also update max on TOB inputs to allow 1.32%+
+  document.getElementById('tobBuy').max = 2;
+  document.getElementById('tobSell').max = 2;
+  const tobColor = etf.warning ? 'var(--accent4)' : 'var(--muted)';
+  const noteClass = etf.warning ? 'notice danger' : 'notice info';
   document.getElementById('etfInfo').innerHTML =
-    `<strong>${etf.name}</strong><span class="etf-badge">${etf.ticker}</span><br>ISIN : ${etf.isin} &nbsp;·&nbsp; Domicile : ${etf.domicile}<br>TER : ${etf.ter} % &nbsp;·&nbsp; TOB : ${etf.tob} %<br><span style="color:var(--muted)">${etf.note}</span>`;
+    `<strong>${etf.name}</strong><span class="etf-badge">${etf.ticker}</span><br>
+     ISIN : <code>${etf.isin}</code> &nbsp;·&nbsp; Domicile : ${etf.domicile}<br>
+     Réplication : ${etf.replication || '—'}<br>
+     Indice : ${etf.index || '—'}<br>
+     TER : <strong>${etf.ter} %/an</strong> &nbsp;·&nbsp; TOB : <strong style="color:${tobColor}">${etf.tob} %</strong>`;
+  // Show/hide the TOB note below
+  const tobNote = document.getElementById('etfTobNote');
+  if(tobNote) {
+    tobNote.className = noteClass;
+    tobNote.style.display = 'block';
+    tobNote.innerHTML = etf.note;
+  }
   compute();
 }
 
@@ -407,7 +423,7 @@ function resetAll() {
   document.getElementById('cgExemption').value = 10000;
   document.getElementById('spreadBuy').value = 0.05;
   document.getElementById('spreadSell').value = 0.05;
-  document.getElementById('etfSelect').value = 'IWDA';
+  document.getElementById('etfSelect').value = 'VWCE';
   document.getElementById('brokerSelect').value = 'bolero';
   onETFChange();
   onBrokerChange();
