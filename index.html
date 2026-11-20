@@ -150,19 +150,18 @@
       <div class="panel">
         <div class="panel-title">Sélection ETF</div>
         <div class="field">
-          <label>ETF capitalisants - Selection Belge</label>
+          <label>ETF capitalisants — sélection belge</label>
           <select id="etfSelect" onchange="onETFChange()">
             <option value="IWDA">iShares MSCI World (Acc) — IWDA — IE00B4L5Y983</option>
             <option value="CSPX">iShares Core S&amp;P 500 (Acc) — CSPX — IE00B5BMR087</option>
             <option value="SSAC">iShares MSCI ACWI (Acc) — SSAC — IE00B6R52259</option>
-            <option value="VWCE">Vanguard All-World (Acc) — VWCE — IE00BK5BQT80 ⚠️ TOB 1,32%</option>
             <option value="AEEM">Amundi Emerging Markets (Acc) — AEEM — LU1681045370</option>
+            <option value="VWCE">Vanguard All-World (Acc) — VWCE — IE00BK5BQT80 ⚠️ TOB 1,32%</option>
           </select>
         </div>
         <div id="etfInfo" style="font-size:.8rem;line-height:1.6;color:var(--muted);"></div>
-        <div class="notice info" id="etfTobNote" style="margin-top:10px;">
-          Chargement…
-        </div>
+        <div class="notice info" id="etfTobNote" style="margin-top:10px;">Chargement…</div>
+        <div id="etfForexNote" style="font-size:.78rem;color:var(--muted);margin-top:8px;line-height:1.5;padding:8px 10px;background:var(--surface2);border-radius:6px;border:1px solid var(--border);"></div>
         <hr class="sep">
         <div class="row-2">
           <div class="field">
@@ -186,25 +185,49 @@
         <div class="field">
           <label>Sélectionner le courtier</label>
           <select id="brokerSelect" onchange="onBrokerChange()">
-            <option value="bolero">Bolero (KBC) — Playlist ETF</option>
-            <option value="degiro">DEGIRO — sélection de base</option>
-            <option value="degiro_other">DEGIRO — hors sélection</option>
-            <option value="saxo">Saxo Bank Belgique</option>
-            <option value="trade_republic">Trade Republic</option>
-            <option value="medirect">MeDirect (0 € ETF)</option>
-            <option value="keytrade">Keytrade Bank</option>
-            <option value="custom">Autre / tarif personnalisé</option>
+            <optgroup label="── Courtiers en ligne ──">
+              <option value="medirect">MeDirect — 0 € sur ETF</option>
+              <option value="trade_republic">Trade Republic — 1 € / 0 € (plan)</option>
+              <option value="degiro">DEGIRO — sélection de base (1 €)</option>
+              <option value="degiro_other">DEGIRO — hors sélection (3 €)</option>
+              <option value="saxo">Saxo Bank Belgique (2 €)</option>
+              <option value="saxo_plan">Saxo AutoInvest — plan automatique</option>
+              <option value="keytrade">Keytrade Bank</option>
+            </optgroup>
+            <optgroup label="── Grandes banques belges ──">
+              <option value="bolero">Bolero / KBC — Playlist ETF</option>
+              <option value="ing_plan">ING — Plan ETF Récurrent (0,10 %, max 1 €)</option>
+              <option value="ing_manuel">ING Self Invest — ordre manuel</option>
+              <option value="belfius">Belfius Re=Bel</option>
+            </optgroup>
+            <optgroup label="── Personnalisé ──">
+              <option value="custom">Autre / tarif personnalisé</option>
+            </optgroup>
           </select>
         </div>
         <div id="brokerNote" class="broker-note"></div>
-        <hr class="sep">
-        <div class="field">
-          <label>Frais de courtage par ordre (€)</label>
-          <input type="number" id="brokerage" step="0.01" min="0" value="5.00" oninput="compute()">
-        </div>
-        <div class="notice" id="brokerTOBnote">
+        <div id="brokerInfoBox" style="margin-top:10px;font-size:.77rem;line-height:1.5;color:var(--muted);display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;"></div>
+        <div class="notice" id="brokerTOBnote" style="display:none;margin-top:8px;">
           ⚠️ <strong>Trade Republic</strong> : vous devez déclarer et payer la TOB vous-même via MyMinFin (avant la fin du 2e mois suivant la transaction). Ce simulateur calcule la TOB mais ne gère pas la déclaration.
         </div>
+        <hr class="sep">
+        <div class="field">
+          <label>Mode de saisie des frais</label>
+          <select id="feeMode" onchange="onFeeModeChange()">
+            <option value="euro">Montant fixe par ordre (€)</option>
+            <option value="pct">Pourcentage de l'ordre (%)</option>
+          </select>
+        </div>
+        <div class="field" id="feeFlatField">
+          <label>Frais de courtage par ordre (€)</label>
+          <input type="number" id="brokerage" step="0.01" min="0" value="0.00" oninput="compute()">
+        </div>
+        <div class="field" id="feePctField" style="display:none;">
+          <label>Frais de courtage (% de l'ordre)</label>
+          <input type="number" id="brokeragePct" step="0.01" min="0" max="5" value="0.00" oninput="compute()">
+          <div style="font-size:.73rem;color:var(--muted);margin-top:3px;">Le simulateur calculera le montant à chaque ordre selon le versement et la fréquence.</div>
+        </div>
+        <div class="notice info" id="brokerCustodyNote" style="display:none;margin-top:4px;"></div>
         <div class="field" style="margin-top:12px;">
           <label>Spread estimé à l'achat (%)</label>
           <input type="number" id="spreadBuy" step="0.01" min="0" value="0.05" oninput="compute()">
@@ -322,24 +345,172 @@
 <script>
 // ==================== DATA ====================
 const ETF_DATA = {
-  VWCE: { name:'Vanguard FTSE All-World UCITS ETF (Acc)', ticker:'VWCE', isin:'IE00BK5BQT80', ter:0.14, tob:1.32, tobSell:1.32, domicile:'Irlande', replication:'Physique (sampling)', index:'FTSE All-World (~3 800 titres, développés + émergents)', warning:true, note:'⚠️ TOB 1,32 % — Compartiment enregistré auprès de la FSMA ET ETF capitalisant → taux 1,32 % (11× plus élevé que 0,12 %). Source : curvo.eu verificateur-tob. TER réduit à 0,14 % en juillet 2026 (était 0,19 %).' },
-  IWDA: { name:'iShares Core MSCI World UCITS ETF (Acc)', ticker:'IWDA', isin:'IE00B4L5Y983', ter:0.20, tob:0.12, tobSell:0.12, domicile:'Irlande', replication:'Physique (sampling)', index:'MSCI World (~1 400 titres, pays développés uniquement)', warning:false, note:'Non enregistré en Belgique → TOB 0,12 %. Inclus dans la sélection de base DEGIRO.' },
-  CSPX: { name:'iShares Core S&P 500 UCITS ETF (Acc)', ticker:'CSPX', isin:'IE00B5BMR087', ter:0.07, tob:0.12, tobSell:0.12, domicile:'Irlande', replication:'Physique complète', index:'S&P 500 (500 plus grandes entreprises US)', warning:false, note:'Non enregistré en Belgique → TOB 0,12 %. TER très bas (0,07 %). Exposition USA uniquement — risque de concentration.' },
-  SSAC: { name:'iShares MSCI ACWI UCITS ETF (Acc)', ticker:'SSAC', isin:'IE00B6R52259', ter:0.20, tob:0.12, tobSell:0.12, domicile:'Irlande', replication:'Physique (sampling)', index:'MSCI ACWI (~1 700 titres, développés + émergents)', warning:false, note:'Non enregistré en Belgique → TOB 0,12 %. Couverture mondiale similaire à VWCE mais sans la TOB de 1,32 %. Indice MSCI (vs FTSE pour VWCE).' },
-  AEEM: { name:'Amundi MSCI Emerging Markets Swap UCITS ETF (Acc)', ticker:'AEEM', isin:'LU1681045370', ter:0.20, tob:0.12, tobSell:0.12, domicile:'Luxembourg', replication:'Synthétique (swap)', index:'MSCI Emerging Markets (~1 400 titres)', warning:false, note:'Domicilié au Luxembourg, non enregistré comme SICAV capitalisant en Belgique → TOB 0,12 %. Réplication synthétique (risque de contrepartie). Marchés émergents uniquement.' },
+  // All 5 ETFs have USD as base currency. All are cotable in EUR on Euronext Amsterdam.
+  // Buying on Euronext in EUR = NO forex conversion fee at any Belgian broker.
+  VWCE: {
+    name:'Vanguard FTSE All-World UCITS ETF (Acc)', ticker:'VWCE', isin:'IE00BK5BQT80',
+    ter:0.14, tob:1.32, tobSell:1.32, domicile:'Irlande',
+    replication:'Physique (sampling)', index:'FTSE All-World (~3 800 titres, développés + émergents)',
+    baseCurrency:'USD',
+    cotations:[
+      { bourse:'Euronext Amsterdam (AEX)', ticker:'VWCE.AS', devise:'EUR', note:'Recommandé — pas de frais de change' },
+      { bourse:'XETRA', ticker:'VWCE.DE', devise:'EUR', note:'Alternative en EUR' },
+      { bourse:'London Stock Exchange', ticker:'VWRP.L', devise:'GBP', note:'Frais de change GBP→EUR' },
+    ],
+    warning:true,
+    note:'⚠️ TOB 1,32 % — Compartiment enregistré auprès de la FSMA ET ETF capitalisant → taux 1,32 % (11× plus élevé que 0,12 %). Source : curvo.eu verificateur-tob. TER réduit à 0,14 % en juillet 2026 (était 0,19 %).'
+  },
+  IWDA: {
+    name:'iShares Core MSCI World UCITS ETF USD (Acc)', ticker:'IWDA', isin:'IE00B4L5Y983',
+    ter:0.20, tob:0.12, tobSell:0.12, domicile:'Irlande',
+    replication:'Physique (sampling)', index:'MSCI World (~1 400 titres, pays développés uniquement)',
+    baseCurrency:'USD',
+    cotations:[
+      { bourse:'Euronext Amsterdam (AEX)', ticker:'IWDA.AS', devise:'EUR', note:'Recommandé — pas de frais de change' },
+      { bourse:'London Stock Exchange', ticker:'IWDA.L', devise:'USD', note:'Frais de change USD→EUR' },
+      { bourse:'XETRA', ticker:'EUNL.DE', devise:'EUR', note:'Alternative en EUR' },
+    ],
+    warning:false,
+    note:'Non enregistré en Belgique → TOB 0,12 %. Inclus dans la sélection de base DEGIRO et VWCE (Tradegate).'
+  },
+  CSPX: {
+    name:'iShares Core S&P 500 UCITS ETF USD (Acc)', ticker:'CSPX', isin:'IE00B5BMR087',
+    ter:0.07, tob:0.12, tobSell:0.12, domicile:'Irlande',
+    replication:'Physique complète', index:'S&P 500 (500 plus grandes entreprises US)',
+    baseCurrency:'USD',
+    cotations:[
+      { bourse:'Euronext Amsterdam (AEX)', ticker:'CSPX.AS', devise:'EUR', note:'Recommandé — pas de frais de change' },
+      { bourse:'London Stock Exchange', ticker:'CSPX.L', devise:'USD', note:'Frais de change USD→EUR' },
+      { bourse:'SIX Swiss Exchange', ticker:'CSSPX.SW', devise:'USD', note:'Frais de change' },
+    ],
+    warning:false,
+    note:'Non enregistré en Belgique → TOB 0,12 %. TER très bas (0,07 %). Exposition USA uniquement — risque de concentration géographique.'
+  },
+  SSAC: {
+    name:'iShares MSCI ACWI UCITS ETF USD (Acc)', ticker:'SSAC', isin:'IE00B6R52259',
+    ter:0.20, tob:0.12, tobSell:0.12, domicile:'Irlande',
+    replication:'Physique (sampling)', index:'MSCI ACWI (~1 700 titres, développés + émergents)',
+    baseCurrency:'USD',
+    cotations:[
+      { bourse:'Euronext Amsterdam (AEX)', ticker:'SSAC.AS', devise:'EUR', note:'Recommandé — pas de frais de change' },
+      { bourse:'London Stock Exchange', ticker:'SSAC.L', devise:'GBP', note:'Frais de change GBP→EUR' },
+      { bourse:'XETRA', ticker:'IUSQ.DE', devise:'EUR', note:'Alternative en EUR' },
+    ],
+    warning:false,
+    note:'Non enregistré en Belgique → TOB 0,12 %. Alternative mondiale à VWCE sans la TOB 1,32 %. Indice MSCI vs FTSE pour VWCE (légères différences de couverture).'
+  },
+  AEEM: {
+    name:'Amundi MSCI Emerging Markets Swap UCITS ETF EUR (Acc)', ticker:'AEEM', isin:'LU1681045370',
+    ter:0.20, tob:0.12, tobSell:0.12, domicile:'Luxembourg',
+    replication:'Synthétique (swap)', index:'MSCI Emerging Markets (~1 400 titres)',
+    baseCurrency:'EUR',
+    cotations:[
+      { bourse:'Euronext Paris', ticker:'AEEM.PA', devise:'EUR', note:'Devise EUR native — pas de frais de change' },
+      { bourse:'XETRA', ticker:'AMEM.DE', devise:'EUR', note:'Alternative en EUR' },
+    ],
+    warning:false,
+    note:'Domicilié au Luxembourg, non enregistré comme SICAV capitalisant en Belgique → TOB 0,12 %. Devise de base EUR (pas de risque de change USD). Réplication synthétique via swap (risque de contrepartie BNP Paribas). Marchés émergents uniquement.'
+  },
 };
 
 const BROKER_DATA = {
-  bolero:       { name:'Bolero (KBC) — Playlist ETF', fee: amt => amt<=250?2.5:amt<=1000?5:amt<=2500?7.5:amt*0.003, feeLabel:'Playlist ETF : 2,50 € (≤250 €) / 5 € (≤1 000 €) / 7,50 € (≤2 500 €) / 0,30 % au-delà', tobAuto:true, note:'TOB prélevée automatiquement. Pas de frais de garde.' },
-  degiro:       { name:'DEGIRO — sélection de base', fee: ()=>1, feeLabel:'1 € par ordre (ETF de la sélection de base sur Tradegate/Euronext)', tobAuto:true, note:'TOB gérée via Flatex. Frais de connectivité : 2,50 €/an/bourse (sauf bourse locale). IWDA et CSPX sont dans la sélection de base.' },
-  degiro_other: { name:'DEGIRO — hors sélection', fee: ()=>3, feeLabel:'3 € par ordre (ETF hors sélection de base)', tobAuto:true, note:'TOB gérée via Flatex. Frais de connectivité : 2,50 €/an/bourse (sauf bourse locale).' },
-  saxo:         { name:'Saxo Bank Belgique', fee: ()=>2, feeLabel:'2 € par ordre ETF (tarif standard 2026)', tobAuto:true, note:'TOB prélevée automatiquement. Pas de frais de garde. Plan AutoInvest disponible.' },
-  trade_republic:{ name:'Trade Republic', fee: ()=>1, feeLabel:'1 € par ordre Manuel. Plans d\'épargne : 0 € (automatiques)', tobAuto:false, note:'⚠️ Trade Republic est un courtier allemand. Vous devez déclarer et payer la TOB vous-même via MyMinFin avant la fin du 2e mois suivant la transaction.' },
-  medirect:     { name:'MeDirect (0 € ETF)', fee: ()=>0, feeLabel:'0 € de frais de courtage sur les ETF (depuis août 2025 — permanent)', tobAuto:true, note:'TOB prélevée automatiquement. Premier courtier belge à supprimer définitivement les frais sur ETF.' },
-  keytrade:     { name:'Keytrade Bank', fee: amt => amt<=250?2.45:amt<=2500?5.95:amt<=5000?14.95:14.95+Math.floor((amt-5000)/10000)*7.5, feeLabel:'2,45 € (≤250 €) / 5,95 € (≤2 500 €) / 14,95 € (≤5 000 €) / +7,50 € par 10 000 € au-delà', tobAuto:true, note:'TOB prélevée automatiquement. Frais compte inactif possibles. Tarifs révisés en janvier 2025.' },
-  custom:       { name:'Tarif personnalisé', fee: ()=>0, feeLabel:'Saisissez le montant ci-dessous', tobAuto:null, note:'Renseignez manuellement le montant par ordre.' },
+  medirect: {
+    name:'MeDirect', feeFlat:0, feePct:0,
+    feeLabel:'0 € de frais de courtage sur les ETF (permanent depuis août 2025)',
+    tobAuto:true, droitsGarde:'0 €', autoETF:false, fractional:false, mineur:'Non (majeur requis)',
+    achatParPart:true,
+    note:'Premier courtier belge à supprimer définitivement les frais sur ETF. TOB prélevée automatiquement. Pas de plan automatique.',
+    changeDevise:'Aucun si ETF coté en EUR sur Euronext'
+  },
+  trade_republic: {
+    name:'Trade Republic', feeFlat:1, feePct:0,
+    feeLabel:'1 \u20AC par ordre manuel / 0 \u20AC pour les plans d\'\u00E9pargne automatiques',
+    tobAuto:false, droitsGarde:'0 €', autoETF:true, fractional:true, mineur:'Non (18 ans requis)',
+    achatParPart:false,
+    note:'⚠️ Courtier allemand : vous devez déclarer et payer la TOB vous-même via MyMinFin. Plans d\'\u00E9pargne ETF gratuits (0 \u20AC), hebdo/mensuel/bimensuel/trim. Parts fractionn\u00E9es disponibles. Compte courant int\u00E9gr\u00E9 avec IBAN belge.',
+    changeDevise:'Aucun si ETF coté en EUR sur Euronext'
+  },
+  degiro: {
+    name:'DEGIRO — sélection de base', feeFlat:1, feePct:0,
+    feeLabel:'1 € par ordre (ETF de la sélection de base sur Tradegate)',
+    tobAuto:true, droitsGarde:'0 € + 2,50 €/an/bourse (sauf bourse locale)', autoETF:false, fractional:false, mineur:'Non (18 ans requis)',
+    achatParPart:true,
+    note:'TOB gérée via Flatex Bank. Frais de connectivité : 2,50 €/an/bourse (sauf Euronext local). IWDA et VWCE dans la sélection de base sur Tradegate. Pas de plan automatique.',
+    changeDevise:'Aucun si ETF coté en EUR. 0,25 % si achat en devise étrangère'
+  },
+  degiro_other: {
+    name:'DEGIRO — hors sélection', feeFlat:3, feePct:0,
+    feeLabel:'3 € par ordre (ETF hors sélection de base)',
+    tobAuto:true, droitsGarde:'0 € + 2,50 €/an/bourse (sauf bourse locale)', autoETF:false, fractional:false, mineur:'Non (18 ans requis)',
+    achatParPart:true,
+    note:'TOB gérée via Flatex. Frais de connectivité : 2,50 €/an/bourse (sauf bourse locale).',
+    changeDevise:'Aucun si ETF coté en EUR. 0,25 % si achat en devise étrangère'
+  },
+  saxo: {
+    name:'Saxo Bank Belgique — ordre manuel', feeFlat:2, feePct:0,
+    feeLabel:'2 € par ordre ETF (tarif standard 2026, min 2 € sur Euronext)',
+    tobAuto:true, droitsGarde:'0 €', autoETF:false, fractional:false, mineur:'Non (18 ans requis)',
+    achatParPart:true,
+    note:'TOB prélevée automatiquement. Pas de frais de garde. Plan AutoInvest disponible en option (voir saxo_plan).',
+    changeDevise:'0,25 % si achat hors EUR. Gratuit si ETF coté en EUR'
+  },
+  saxo_plan: {
+    name:'Saxo AutoInvest — plan automatique', feeFlat:2, feePct:0,
+    feeLabel:'2 € par plan ETF par mois (même si ordre non exécuté)',
+    tobAuto:true, droitsGarde:'0 €', autoETF:true, fractional:false, mineur:'Non (18 ans requis)',
+    achatParPart:true,
+    note:'Troisi\u00E8me courtier belge à proposer un plan ETF automatique (apr\u00E8s Bolero et ING). 2 € facturés même en cas d\'insuffisance de fonds. Jusqu\'\u00E0 10 plans simultanés. TOB automatique.',
+    changeDevise:'0,25 % si achat hors EUR'
+  },
+  keytrade: {
+    name:'Keytrade Bank', feeFlat:5.95, feePct:0,
+    feeLabel:'2,45 € (≤250 €) / 5,95 € (≤2 500 €) / 14,95 € (≤5 000 €)',
+    tobAuto:true, droitsGarde:'0 €', autoETF:false, fractional:false, mineur:'Oui (Keypack / Keyplan for Kids)',
+    achatParPart:true,
+    note:'TOB prélevée automatiquement. Frais de compte inactif possibles. Tarifs révisés en janvier 2025. Compte pour mineur disponible (Keypack Kids). Pas de plan automatique.',
+    changeDevise:'0,15 % si achat hors EUR (min 7,50 €)'
+  },
+  bolero: {
+    name:'Bolero (KBC) — Playlist ETF', feeFlat:5, feePct:0,
+    feeLabel:'Playlist ETF : 2,50 € (≤250 €) / 5 € (≤1 000 €) / 7,50 € (≤2 500 €) / 0,30 % au-delà',
+    tobAuto:true, droitsGarde:'0 €', autoETF:true, fractional:false, mineur:'Non (majeur requis)',
+    achatParPart:true,
+    note:'TOB prélevée automatiquement. Plan d\'\u00E9pargne ETF automatique disponible (Bolero Playlist ETF). Pas de parts fractionn\u00E9es. R\u00E9serv\u00E9 aux clients KBC/CBC.',
+    changeDevise:'0,50 % si achat hors EUR'
+  },
+  ing_plan: {
+    name:'ING Self Invest — Plan ETF Récurrent', feeFlat:0, feePct:0.10,
+    feeLabel:'0,10 % du montant investi (max 1 €) par plan. 0 € de droits de garde pour les ETF du plan.',
+    tobAuto:true, droitsGarde:'0 € (ETF du plan) / 0,0242 %/mois sinon', autoETF:true, fractional:true, mineur:'Sous conditions (représentant légal)',
+    achatParPart:false,
+    note:'Plan ETF automatique lanc\u00E9 en juin 2026. Parts fractionn\u00E9es disponibles. Limit\u00E9 \u00E0 10 ETF s\u00E9lectionn\u00E9s. Fr\u00E9quence : hebdo, mensuelle, trimestrielle. TOB g\u00E9r\u00E9e automatiquement. R\u00E9serv\u00E9 aux clients ING. Plafond d\'investissement par plan.',
+    changeDevise:'0,15 % si achat hors EUR. Gratuit si ETF coté en EUR'
+  },
+  ing_manuel: {
+    name:'ING Self Invest — Ordre manuel', feeFlat:3.50, feePct:0,
+    feeLabel:'0,35 % du montant, min 1 € (Euronext). Ex : 1 000 € → 3,50 €',
+    tobAuto:true, droitsGarde:'0,0242 %/mois TVAC (min 0,25 €/mois)', autoETF:false, fractional:false, mineur:'Sous conditions (représentant légal)',
+    achatParPart:true,
+    note:'Droits de garde mensuels : 0,0242 %/mois = env. 290 €/an pour 100 000 € de portefeuille. TOB gérée automatiquement. Réservé aux clients ING. Pas de parts fractionnées. Pas de plan automatique pour les ETF.',
+    changeDevise:'0,15 % si achat hors EUR'
+  },
+  belfius: {
+    name:'Belfius Re=Bel', feeFlat:2, feePct:0,
+    feeLabel:'1 € (trackers ≤250 € sur Euronext) / 2 € (Euronext standard) / barème au-delà',
+    tobAuto:true, droitsGarde:'0 €', autoETF:false, fractional:false, mineur:'Non (majeur requis)',
+    achatParPart:true,
+    note:'TOB prélevée automatiquement. 0 € de droits de garde. Réservé aux clients Belfius. Pas de parts fractionnées. Pas de plan automatique ETF. Tarif 1 € pour 18-24 ans depuis oct. 2026 sur certains titres.',
+    changeDevise:'Variable selon la bourse. Gratuit si ETF coté en EUR'
+  },
+  custom: {
+    name:'Tarif personnalisé', feeFlat:0, feePct:0,
+    feeLabel:'Renseignez manuellement le montant ou le pourcentage',
+    tobAuto:null, droitsGarde:'—', autoETF:null, fractional:null, mineur:'—',
+    achatParPart:null,
+    note:'Saisissez vos propres paramètres.',
+    changeDevise:'À renseigner'
+  },
 };
-
 // ==================== STATE ====================
 let mainChart = null;
 let activeChartTab = 'portfolio';
@@ -348,6 +519,7 @@ let activeChartTab = 'portfolio';
 window.addEventListener('load', () => {
   onETFChange();
   onBrokerChange();
+  onFeeModeChange();
   compute();
 });
 
@@ -357,23 +529,25 @@ function onETFChange() {
   document.getElementById('ter').value = etf.ter.toFixed(2);
   document.getElementById('tobBuy').value = etf.tob.toFixed(2);
   document.getElementById('tobSell').value = (etf.tobSell || etf.tob).toFixed(2);
-  // Also update max on TOB inputs to allow 1.32%+
-  document.getElementById('tobBuy').max = 2;
-  document.getElementById('tobSell').max = 2;
-  const tobColor = etf.warning ? 'var(--accent4)' : 'var(--muted)';
+  document.getElementById('tobBuy').max = 5;
+  document.getElementById('tobSell').max = 5;
+  const tobColor = etf.warning ? 'var(--accent4)' : 'var(--accent2)';
   const noteClass = etf.warning ? 'notice danger' : 'notice info';
   document.getElementById('etfInfo').innerHTML =
     `<strong>${etf.name}</strong><span class="etf-badge">${etf.ticker}</span><br>
-     ISIN : <code>${etf.isin}</code> &nbsp;·&nbsp; Domicile : ${etf.domicile}<br>
-     Réplication : ${etf.replication || '—'}<br>
-     Indice : ${etf.index || '—'}<br>
+     ISIN : <code>${etf.isin}</code> &nbsp;·&nbsp; Domicile : ${etf.domicile} &nbsp;·&nbsp; Devise de base : <strong>${etf.baseCurrency || 'USD'}</strong><br>
+     Réplication : ${etf.replication || '—'} &nbsp;·&nbsp; Indice : ${etf.index || '—'}<br>
      TER : <strong>${etf.ter} %/an</strong> &nbsp;·&nbsp; TOB : <strong style="color:${tobColor}">${etf.tob} %</strong>`;
-  // Show/hide the TOB note below
   const tobNote = document.getElementById('etfTobNote');
-  if(tobNote) {
-    tobNote.className = noteClass;
-    tobNote.style.display = 'block';
-    tobNote.innerHTML = etf.note;
+  if(tobNote) { tobNote.className = noteClass; tobNote.style.display = 'block'; tobNote.innerHTML = etf.note; }
+  // Forex / cotations note
+  const fxNote = document.getElementById('etfForexNote');
+  if(fxNote && etf.cotations) {
+    const rows = etf.cotations.map(c =>
+      `<span style="font-weight:600">${c.ticker}</span> <span style="color:var(--muted)">${c.bourse} · ${c.devise}</span> — ${c.note}`
+    ).join('<br>');
+    fxNote.innerHTML = `<strong style="color:var(--text)">Cotations disponibles :</strong><br>${rows}<br><span style="color:var(--muted);font-size:.72rem">⚡ Achetez toujours en EUR sur Euronext pour éviter les frais de change.</span>`;
+    fxNote.style.display = 'block';
   }
   compute();
 }
@@ -381,18 +555,54 @@ function onETFChange() {
 function onBrokerChange() {
   const key = document.getElementById('brokerSelect').value;
   const b = BROKER_DATA[key];
-  document.getElementById('brokerNote').innerHTML = `<strong>${b.name}</strong><br>${b.feeLabel}<br><span style="color:var(--muted)">${b.note}</span>`;
-  // Set fee sample for 500€ order if not custom
-  if (key !== 'custom') {
-    const monthly = parseFloat(document.getElementById('monthlyDeposit').value) || 500;
-    const freq = parseInt(document.getElementById('buyFreq').value) || 1;
-    const sampleOrder = monthly * freq;
-    const fee = typeof b.fee === 'function' ? b.fee(Math.max(sampleOrder, 100)) : 0;
-    document.getElementById('brokerage').value = fee.toFixed(2);
+  document.getElementById('brokerNote').innerHTML = `<strong>${b.name}</strong><br><span style="color:var(--muted)">${b.feeLabel}</span>`;
+  // Info box: key broker characteristics
+  const autoLabel = b.autoETF === true ? '✅ Oui' : b.autoETF === false ? '❌ Non' : '—';
+  const fractLabel = b.fractional === true ? '✅ Oui' : b.fractional === false ? '❌ Non' : '—';
+  const tobLabel = b.tobAuto === true ? '✅ Automatique' : b.tobAuto === false ? '⚠️ À déclarer soi-même' : '—';
+  const infoBox = document.getElementById('brokerInfoBox');
+  if(infoBox) {
+    infoBox.innerHTML = [
+      `<span style="color:var(--muted)">Droits de garde :</span><span>${b.droitsGarde || '—'}</span>`,
+      `<span style="color:var(--muted)">Plan ETF auto :</span><span>${autoLabel}</span>`,
+      `<span style="color:var(--muted)">Parts fractionnées :</span><span>${fractLabel}</span>`,
+      `<span style="color:var(--muted)">Gestion TOB :</span><span>${tobLabel}</span>`,
+      `<span style="color:var(--muted)">Compte mineur :</span><span>${b.mineur || '—'}</span>`,
+      `<span style="color:var(--muted)">Frais de change :</span><span>${b.changeDevise || '—'}</span>`,
+    ].join('');
+    infoBox.style.display = 'grid';
+  }
+  // Note at bottom
+  const custodyNote = document.getElementById('brokerCustodyNote');
+  if(custodyNote && b.note) {
+    custodyNote.innerHTML = b.note;
+    custodyNote.style.display = 'block';
+    custodyNote.className = (key === 'trade_republic') ? 'notice danger' : 'notice info';
   }
   // Show/hide TOB warning
   const warn = document.getElementById('brokerTOBnote');
-  warn.style.display = (key === 'trade_republic') ? 'block' : 'none';
+  if(warn) warn.style.display = (key === 'trade_republic') ? 'block' : 'none';
+  // Set fee values
+  const feeMode = document.getElementById('feeMode').value;
+  if(key !== 'custom') {
+    document.getElementById('brokerage').value = (b.feeFlat || 0).toFixed(2);
+    document.getElementById('brokeragePct').value = (b.feePct || 0).toFixed(2);
+    // Auto-select fee mode based on broker
+    if (b.feePct > 0 && b.feeFlat === 0) {
+      document.getElementById('feeMode').value = 'pct';
+      onFeeModeChange();
+    } else {
+      document.getElementById('feeMode').value = 'euro';
+      onFeeModeChange();
+    }
+  }
+  compute();
+}
+
+function onFeeModeChange() {
+  const mode = document.getElementById('feeMode').value;
+  document.getElementById('feeFlatField').style.display = mode === 'euro' ? 'block' : 'none';
+  document.getElementById('feePctField').style.display = mode === 'pct' ? 'block' : 'none';
   compute();
 }
 
@@ -424,7 +634,9 @@ function resetAll() {
   document.getElementById('spreadBuy').value = 0.05;
   document.getElementById('spreadSell').value = 0.05;
   document.getElementById('etfSelect').value = 'VWCE';
-  document.getElementById('brokerSelect').value = 'bolero';
+  document.getElementById('brokerSelect').value = 'medirect';
+  document.getElementById('feeMode').value = 'euro';
+  onFeeModeChange();
   onETFChange();
   onBrokerChange();
   compute();
@@ -604,7 +816,17 @@ function getParams() {
     terPct: parseFloat(document.getElementById('ter').value) || 0.20,
     inflationPct: parseFloat(document.getElementById('inflation').value) || 2,
     buyFreqMonths: parseInt(document.getElementById('buyFreq').value) || 1,
-    brokerageFee: parseFloat(document.getElementById('brokerage').value) || 0,
+    brokerageFee: (() => {
+      const mode = document.getElementById('feeMode').value;
+      if (mode === 'pct') {
+        const monthly = parseFloat(document.getElementById('monthlyDeposit').value) || 0;
+        const freq = parseInt(document.getElementById('buyFreq').value) || 1;
+        const orderAmt = monthly * freq;
+        const pct = parseFloat(document.getElementById('brokeragePct').value) || 0;
+        return orderAmt * pct / 100;
+      }
+      return parseFloat(document.getElementById('brokerage').value) || 0;
+    })(),
     tobBuyPct: parseFloat(document.getElementById('tobBuy').value) || 0.12,
     tobSellPct: parseFloat(document.getElementById('tobSell').value) || 0.12,
     spreadBuyPct: parseFloat(document.getElementById('spreadBuy').value) || 0.05,
