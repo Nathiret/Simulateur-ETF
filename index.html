@@ -156,12 +156,17 @@
             <option value="CSPX">iShares Core S&amp;P 500 (Acc) — CSPX — IE00B5BMR087</option>
             <option value="SSAC">iShares MSCI ACWI (Acc) — SSAC — IE00B6R52259</option>
             <option value="AEEM">Amundi Emerging Markets (Acc) — AEEM — LU1681045370</option>
+            <option value="WEBN">Amundi Prime All Country World (Acc) — WEBN — IE0003XJA0J9</option>
             <option value="VWCE">Vanguard All-World (Acc) — VWCE — IE00BK5BQT80 ⚠️ TOB 1,32%</option>
           </select>
         </div>
         <div id="etfInfo" style="font-size:.8rem;line-height:1.6;color:var(--muted);"></div>
         <div class="notice info" id="etfTobNote" style="margin-top:10px;">Chargement…</div>
         <div id="etfForexNote" style="font-size:.78rem;color:var(--muted);margin-top:8px;line-height:1.5;padding:8px 10px;background:var(--surface2);border-radius:6px;border:1px solid var(--border);"></div>
+        <div style="margin-top:10px;font-size:.76rem;line-height:1.5;padding:9px 12px;background:color-mix(in srgb,var(--accent2) 8%,transparent);border:1px solid color-mix(in srgb,var(--accent2) 20%,transparent);border-radius:6px;">
+          <strong style="color:var(--accent2)">ℹ️ Pourquoi uniquement des ETF capitalisants ?</strong><br>
+          <span style="color:var(--muted)">Les ETF <strong style="color:var(--text)">distribuants</strong> versent les dividendes sur votre compte, qui sont alors soumis au <strong style="color:var(--text)">précompte mobilier belge de 30 %</strong> à chaque versement. Cet impôt brise l'effet de composition et pénalise fortement le rendement sur le long terme. Les ETF <strong style="color:var(--text)">capitalisants</strong> réinvestissent automatiquement les dividendes sans prélèvement immédiat — seule la taxe sur les plus-values (10 %) s'applique à la sortie. Sur 20-30 ans, la différence peut représenter plusieurs dizaines de milliers d'euros.</span>
+        </div>
         <hr class="sep">
         <div class="row-2">
           <div class="field">
@@ -351,6 +356,19 @@
 const ETF_DATA = {
   // All 5 ETFs have USD as base currency. All are cotable in EUR on Euronext Amsterdam.
   // Buying on Euronext in EUR = NO forex conversion fee at any Belgian broker.
+  WEBN: {
+    name:'Amundi Prime All Country World UCITS ETF (Acc)', ticker:'WEBN', isin:'IE0003XJA0J9',
+    ter:0.07, tob:0.12, tobSell:0.12, domicile:'Irlande',
+    replication:'Physique (sampling)', index:'Solactive GBS Global Markets Large & Mid Cap (~3 400 titres, développés + émergents)',
+    baseCurrency:'USD',
+    cotations:[
+      { bourse:'Euronext Amsterdam (AEX)', ticker:'WEBN.AS', devise:'EUR', note:'Recommandé — pas de frais de change' },
+      { bourse:'Euronext Paris', ticker:'WEBQ.PA', devise:'EUR', note:'Alternative en EUR' },
+      { bourse:'XETRA', ticker:'WEBN.DE', devise:'EUR', note:'Alternative en EUR' },
+    ],
+    warning:false,
+    note:'Non enregistré en Belgique → TOB 0,12 %. TER exceptionnel (0,07 %) — parmi les plus bas pour un ETF monde complet. Disponible dans le plan ETF ING. Lancé en juin 2024, encours ~3,6 Md USD. Indice Solactive (vs MSCI/FTSE pour les autres) — couverture très similaire.'
+  },
   VWCE: {
     name:'Vanguard FTSE All-World UCITS ETF (Acc)', ticker:'VWCE', isin:'IE00BK5BQT80',
     ter:0.14, tob:1.32, tobSell:1.32, domicile:'Irlande',
