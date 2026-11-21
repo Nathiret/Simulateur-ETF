@@ -196,7 +196,7 @@
             </optgroup>
             <optgroup label="── Grandes banques belges ──">
               <option value="bolero">Bolero / KBC — Playlist ETF</option>
-              <option value="ing_plan">ING — Plan ETF Récurrent (0,10 %, max 1 €)</option>
+              <option value="ing_plan">ING — Plan ETF Récurrent (0,10 %, min 0 €)</option>
               <option value="ing_manuel">ING Self Invest — ordre manuel</option>
               <option value="belfius">Belfius Re=Bel</option>
             </optgroup>
@@ -226,6 +226,10 @@
           <label>Frais de courtage (% de l'ordre)</label>
           <input type="number" id="brokeragePct" step="0.01" min="0" max="5" value="0.00" oninput="compute()">
           <div style="font-size:.73rem;color:var(--muted);margin-top:3px;">Le simulateur calculera le montant à chaque ordre selon le versement et la fréquence.</div>
+        </div>
+        <div class="field" id="feeMinField" style="display:none;">
+          <label>Minimum par ordre (€)</label>
+          <input type="number" id="brokerageMin" step="0.01" min="0" value="0.00" oninput="compute()">
         </div>
         <div class="notice info" id="brokerCustodyNote" style="display:none;margin-top:4px;"></div>
         <div class="field" style="margin-top:12px;">
@@ -480,19 +484,19 @@ const BROKER_DATA = {
   },
   ing_plan: {
     name:'ING Self Invest — Plan ETF Récurrent', feeFlat:0, feePct:0.10,
-    feeLabel:'0,10 % du montant investi (max 1 €) par plan. 0 € de droits de garde pour les ETF du plan.',
+    feeLabel:'0,10 % du montant investi, min 0 € (web/app). 0 € de droits de garde pour les trackers via plan. Source : tarif officiel ING 07/2026.',
     tobAuto:true, droitsGarde:'0 € (ETF du plan) / 0,0242 %/mois sinon', autoETF:true, fractional:true, mineur:'Sous conditions (représentant légal)',
     achatParPart:false,
     note:'Plan ETF automatique lanc\u00E9 en juin 2026. Parts fractionn\u00E9es disponibles. Limit\u00E9 \u00E0 10 ETF s\u00E9lectionn\u00E9s. Fr\u00E9quence : hebdo, mensuelle, trimestrielle. TOB g\u00E9r\u00E9e automatiquement. R\u00E9serv\u00E9 aux clients ING. Plafond d\'investissement par plan.',
     changeDevise:'0,15 % si achat hors EUR. Gratuit si ETF coté en EUR'
   },
   ing_manuel: {
-    name:'ING Self Invest — Ordre manuel', feeFlat:3.50, feePct:0,
-    feeLabel:'0,35 % du montant, min 1 € (Euronext). Ex : 1 000 € → 3,50 €',
+    name:'ING Self Invest — Ordre manuel', feeFlat:0, feePct:0.35, feeMin:1,
+    feeLabel:'0,35 % du montant, min 1 € (web/app Euronext). Tarif agence : 1 %, min 40 €. Source : tarif officiel ING juillet 2026.',
     tobAuto:true, droitsGarde:'0,0242 %/mois TVAC (min 0,25 €/mois)', autoETF:false, fractional:false, mineur:'Sous conditions (représentant légal)',
     achatParPart:true,
-    note:'Droits de garde mensuels : 0,0242 %/mois = env. 290 €/an pour 100 000 € de portefeuille. TOB gérée automatiquement. Réservé aux clients ING. Pas de parts fractionnées. Pas de plan automatique pour les ETF.',
-    changeDevise:'0,15 % si achat hors EUR'
+    note:'Droits de garde : 0,0242 %/mois TVAC (min 0,25 €/mois) = env. 290 €/an pour 100 000 €. TOB gérée automatiquement. Réservé aux clients ING. Pas de parts fractionnées. Plan automatique ETF disponible séparément (voir ING Plan Récurrent). Tarif officiel ING en vigueur au 01/07/2026.',
+    changeDevise:'1 % (marge ING Self Invest sur opérations de change — source tarif officiel ING 07/2026). Gratuit si ETF coté en EUR sur Euronext'
   },
   belfius: {
     name:'Belfius Re=Bel', feeFlat:2, feePct:0,
@@ -592,14 +596,13 @@ function onBrokerChange() {
   if(key !== 'custom') {
     document.getElementById('brokerage').value = (b.feeFlat || 0).toFixed(2);
     document.getElementById('brokeragePct').value = (b.feePct || 0).toFixed(2);
-    // Auto-select fee mode based on broker
+    document.getElementById('brokerageMin').value = (b.feeMin || 0).toFixed(2);
     if (b.feePct > 0 && b.feeFlat === 0) {
       document.getElementById('feeMode').value = 'pct';
-      onFeeModeChange();
     } else {
       document.getElementById('feeMode').value = 'euro';
-      onFeeModeChange();
     }
+    onFeeModeChange();
   }
   compute();
 }
@@ -608,6 +611,7 @@ function onFeeModeChange() {
   const mode = document.getElementById('feeMode').value;
   document.getElementById('feeFlatField').style.display = mode === 'euro' ? 'block' : 'none';
   document.getElementById('feePctField').style.display = mode === 'pct' ? 'block' : 'none';
+  document.getElementById('feeMinField').style.display = mode === 'pct' ? 'block' : 'none';
   compute();
 }
 
@@ -840,7 +844,9 @@ function getParams() {
         const monthly = n('monthlyDeposit');
         const freq = ni('buyFreq');
         const orderAmt = monthly * freq;
-        return orderAmt * n('brokeragePct') / 100;
+        const pctFee = orderAmt * n('brokeragePct') / 100;
+        const minFee = n('brokerageMin');
+        return Math.max(pctFee, minFee);
       }
       return n('brokerage');
     })(),
