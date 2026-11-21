@@ -250,16 +250,16 @@
           <input type="number" id="monthlyDeposit" step="50" min="0" value="0" oninput="compute()">
         </div>
         <div class="field">
-          <label>Durée d'investissement : <strong id="durationLabel">34 ans</strong></label>
-          <input type="range" id="duration" min="1" max="50" value="34" oninput="onDurationSlide(this.value)">
+          <label>Durée d'investissement : <strong id="durationLabel">1 an</strong></label>
+          <input type="range" id="duration" min="1" max="50" value="1" oninput="onDurationSlide(this.value)">
         </div>
         <div class="field">
           <label>Rendement annuel brut (avant TER) : <strong id="returnLabel">6,00 %</strong></label>
           <input type="range" id="annualReturn" min="0" max="20" step="0.5" value="6" oninput="onReturnSlide(this.value)">
         </div>
         <div class="field">
-          <label>Inflation annuelle : <strong id="inflationLabel">2,00 %</strong></label>
-          <input type="range" id="inflation" min="0" max="10" step="0.25" value="2" oninput="onInflationSlide(this.value)">
+          <label>Inflation annuelle : <strong id="inflationLabel">2,50 %</strong></label>
+          <input type="range" id="inflation" min="0" max="10" step="0.25" value="2.5" oninput="onInflationSlide(this.value)">
         </div>
         <div class="field">
           <label>Fréquence des achats</label>
@@ -520,6 +520,14 @@ window.addEventListener('load', () => {
   onETFChange();
   onBrokerChange();
   onFeeModeChange();
+  // On first load, all values start at 0 — override what ETF/broker change set
+  document.getElementById('ter').value = 0;
+  document.getElementById('tobBuy').value = 0;
+  document.getElementById('tobSell').value = 0;
+  document.getElementById('spreadBuy').value = 0.05;
+  document.getElementById('spreadSell').value = 0.05;
+  document.getElementById('cgTax').value = 10;
+  document.getElementById('cgExemption').value = 10000;
   compute();
 });
 
@@ -622,23 +630,29 @@ function onInflationSlide(v) {
 function resetAll() {
   document.getElementById('initialCapital').value = 0;
   document.getElementById('monthlyDeposit').value = 0;
-  document.getElementById('duration').value = 34;
-  document.getElementById('durationLabel').textContent = '34 ans';
+  document.getElementById('duration').value = 1;
+  document.getElementById('durationLabel').textContent = '1 an';
   document.getElementById('annualReturn').value = 6;
   document.getElementById('returnLabel').textContent = '6,00 %';
-  document.getElementById('inflation').value = 2;
-  document.getElementById('inflationLabel').textContent = '2,00 %';
+  document.getElementById('inflation').value = 2.5;
+  document.getElementById('inflationLabel').textContent = '2,50 %';
   document.getElementById('buyFreq').value = 1;
   document.getElementById('cgTax').value = 10;
   document.getElementById('cgExemption').value = 10000;
   document.getElementById('spreadBuy').value = 0.05;
   document.getElementById('spreadSell').value = 0.05;
-  document.getElementById('etfSelect').value = 'VWCE';
+  document.getElementById('brokerage').value = 0;
+  document.getElementById('brokeragePct').value = 0;
+  document.getElementById('etfSelect').value = 'IWDA'; // premier de la liste
   document.getElementById('brokerSelect').value = 'medirect';
   document.getElementById('feeMode').value = 'euro';
   onFeeModeChange();
   onETFChange();
   onBrokerChange();
+  // After ETF change sets TER/TOB, force them to 0 for a true reset
+  document.getElementById('ter').value = 0;
+  document.getElementById('tobBuy').value = 0;
+  document.getElementById('tobSell').value = 0;
   compute();
 }
 
@@ -807,32 +821,41 @@ function terDrag(portfolio, terPct) {
   return portfolio * (1 - Math.pow(1 - terPct/100, 1/12));
 }
 
+function n(id, fallback=0) {
+  // Safe numeric read: returns 0 when field is 0 (not the fallback)
+  const v = parseFloat(document.getElementById(id).value);
+  return isNaN(v) ? fallback : v;
+}
+function ni(id, fallback=1) {
+  const v = parseInt(document.getElementById(id).value);
+  return isNaN(v) ? fallback : v;
+}
+
 function getParams() {
   return {
-    initialCapital: parseFloat(document.getElementById('initialCapital').value) || 0,
-    monthlyDeposit: parseFloat(document.getElementById('monthlyDeposit').value) || 0,
-    durationYears: parseInt(document.getElementById('duration').value) || 34,
-    grossReturnPct: parseFloat(document.getElementById('annualReturn').value) || 6,
-    terPct: parseFloat(document.getElementById('ter').value) || 0.20,
-    inflationPct: parseFloat(document.getElementById('inflation').value) || 2,
-    buyFreqMonths: parseInt(document.getElementById('buyFreq').value) || 1,
+    initialCapital: n('initialCapital'),
+    monthlyDeposit: n('monthlyDeposit'),
+    durationYears: Math.max(1, ni('duration', 1)),
+    grossReturnPct: n('annualReturn'),
+    terPct: n('ter'),
+    inflationPct: n('inflation'),
+    buyFreqMonths: ni('buyFreq'),
     brokerageFee: (() => {
       const mode = document.getElementById('feeMode').value;
       if (mode === 'pct') {
-        const monthly = parseFloat(document.getElementById('monthlyDeposit').value) || 0;
-        const freq = parseInt(document.getElementById('buyFreq').value) || 1;
+        const monthly = n('monthlyDeposit');
+        const freq = ni('buyFreq');
         const orderAmt = monthly * freq;
-        const pct = parseFloat(document.getElementById('brokeragePct').value) || 0;
-        return orderAmt * pct / 100;
+        return orderAmt * n('brokeragePct') / 100;
       }
-      return parseFloat(document.getElementById('brokerage').value) || 0;
+      return n('brokerage');
     })(),
-    tobBuyPct: parseFloat(document.getElementById('tobBuy').value) || 0.12,
-    tobSellPct: parseFloat(document.getElementById('tobSell').value) || 0.12,
-    spreadBuyPct: parseFloat(document.getElementById('spreadBuy').value) || 0.05,
-    spreadSellPct: parseFloat(document.getElementById('spreadSell').value) || 0.05,
-    cgTaxPct: parseFloat(document.getElementById('cgTax').value) || 10,
-    cgExemption: parseFloat(document.getElementById('cgExemption').value) || 10000,
+    tobBuyPct: n('tobBuy'),
+    tobSellPct: n('tobSell'),
+    spreadBuyPct: n('spreadBuy'),
+    spreadSellPct: n('spreadSell'),
+    cgTaxPct: n('cgTax'),
+    cgExemption: n('cgExemption'),
   };
 }
 
