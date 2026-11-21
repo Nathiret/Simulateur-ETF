@@ -520,10 +520,7 @@ window.addEventListener('load', () => {
   onETFChange();
   onBrokerChange();
   onFeeModeChange();
-  // On first load, all values start at 0 — override what ETF/broker change set
-  document.getElementById('ter').value = 0;
-  document.getElementById('tobBuy').value = 0;
-  document.getElementById('tobSell').value = 0;
+  // TER/TOB come from the selected ETF (onETFChange already set them)
   document.getElementById('spreadBuy').value = 0.05;
   document.getElementById('spreadSell').value = 0.05;
   document.getElementById('cgTax').value = 10;
@@ -649,10 +646,7 @@ function resetAll() {
   onFeeModeChange();
   onETFChange();
   onBrokerChange();
-  // After ETF change sets TER/TOB, force them to 0 for a true reset
-  document.getElementById('ter').value = 0;
-  document.getElementById('tobBuy').value = 0;
-  document.getElementById('tobSell').value = 0;
+  // TER/TOB are set by onETFChange() above — no override needed
   compute();
 }
 
