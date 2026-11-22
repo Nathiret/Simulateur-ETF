@@ -362,9 +362,9 @@ const ETF_DATA = {
     replication:'Physique (sampling)', index:'Solactive GBS Global Markets Large & Mid Cap (~3 400 titres, développés + émergents)',
     baseCurrency:'USD',
     cotations:[
-      { bourse:'Euronext Amsterdam (AEX)', ticker:'WEBN.AS', devise:'EUR', note:'Recommandé — pas de frais de change' },
-      { bourse:'Euronext Paris', ticker:'WEBQ.PA', devise:'EUR', note:'Alternative en EUR' },
-      { bourse:'XETRA', ticker:'WEBN.DE', devise:'EUR', note:'Alternative en EUR' },
+      { bourse:'XETRA (Deutsche Börse)', ticker:'WEBN.DE', devise:'EUR', note:'Cotation principale en EUR — pas de frais de change' },
+      { bourse:'XETRA (Deutsche Börse)', ticker:'WEBQ.DE', devise:'USD', note:'Part USD sur XETRA — frais de change USD→EUR' },
+      { bourse:'Borsa Italiana', ticker:'WEBN.MI', devise:'EUR', note:'Alternative en EUR' },
     ],
     warning:false,
     note:'Non enregistré en Belgique → TOB 0,12 %. TER exceptionnel (0,07 %) — parmi les plus bas pour un ETF monde complet. Disponible dans le plan ETF ING. Lancé en juin 2024, encours ~3,6 Md USD. Indice Solactive (vs MSCI/FTSE pour les autres) — couverture très similaire.'
@@ -389,7 +389,7 @@ const ETF_DATA = {
     baseCurrency:'USD',
     cotations:[
       { bourse:'Euronext Amsterdam (AEX)', ticker:'IWDA.AS', devise:'EUR', note:'Recommandé — pas de frais de change' },
-      { bourse:'London Stock Exchange', ticker:'IWDA.L', devise:'USD', note:'Frais de change USD→EUR' },
+      { bourse:'London Stock Exchange', ticker:'SWDA.L', devise:'GBP', note:'Frais de change GBP→EUR (ticker IWDA.L pour la part USD)' },
       { bourse:'XETRA', ticker:'EUNL.DE', devise:'EUR', note:'Alternative en EUR' },
     ],
     warning:false,
@@ -403,7 +403,7 @@ const ETF_DATA = {
     cotations:[
       { bourse:'Euronext Amsterdam (AEX)', ticker:'CSPX.AS', devise:'EUR', note:'Recommandé — pas de frais de change' },
       { bourse:'London Stock Exchange', ticker:'CSPX.L', devise:'USD', note:'Frais de change USD→EUR' },
-      { bourse:'SIX Swiss Exchange', ticker:'CSSPX.SW', devise:'USD', note:'Frais de change' },
+      { bourse:'SIX Swiss Exchange', ticker:'CSSPX.SW', devise:'CHF', note:'Frais de change CHF→EUR' },
     ],
     warning:false,
     note:'Non enregistré en Belgique → TOB 0,12 %. TER très bas (0,07 %). Exposition USA uniquement — risque de concentration géographique.'
